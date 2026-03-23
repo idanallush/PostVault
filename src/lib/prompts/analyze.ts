@@ -1,0 +1,45 @@
+export function buildAnalysisPrompt(content: {
+  platform: string;
+  text: string;
+  hasVideo: boolean;
+  hasImage: boolean;
+}): { system: string; user: string } {
+  const contentType = content.hasVideo
+    ? "וידאו"
+    : content.hasImage
+      ? "תמונה"
+      : "טקסט";
+
+  const system = `אתה מנתח תוכן חכם מרשתות חברתיות. התפקיד שלך לנתח פוסטים ולהחזיר סיכום מדויק ושימושי בעברית.
+
+כללים:
+- תמיד תענה בעברית
+- החזר JSON תקין בלבד, בלי markdown, בלי backticks, בלי הסברים
+- הסיכום צריך להיות תמציתי (2-4 משפטים) אבל מלא
+- אם זה מדריך: פרט את הצעדים בדיוק
+- אם זה חינוכי: הוצא את הנקודות החשובות
+- אם זה השראתי: תפוס את הרעיון המרכזי
+- התגיות צריכות להיות קצרות ובעברית`;
+
+  const user = `נתח את הפוסט הבא מ-${content.platform}:
+
+סוג תוכן: ${contentType}
+תוכן:
+---
+${content.text}
+---
+
+החזר JSON בפורמט הזה בלבד:
+{
+  "summary": "סיכום תמציתי בעברית",
+  "category": "אחד מ: טכנולוגיה, עסקים, בריאות, אוכל, ספורט, יצירתיות, לימוד, השראה, חדשות, טיפים, ביקורת, בידור, אחר",
+  "content_type": "אחד מ: tutorial, educational, inspirational, news, review, recipe, tip, entertainment, other",
+  "key_points": ["נקודה 1", "נקודה 2", "נקודה 3"],
+  "action_items": ["צעד 1", "צעד 2"],
+  "suggested_tags": ["תג1", "תג2", "תג3"]
+}
+
+אם אין צעדים מעשיים, action_items יהיה מערך ריק.`;
+
+  return { system, user };
+}
