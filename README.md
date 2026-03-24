@@ -10,7 +10,7 @@
 
 - Next.js 16 + React 19 + TypeScript
 - Tailwind CSS v4
-- Supabase (PostgreSQL)
+- Neon (PostgreSQL serverless)
 - Claude AI (Sonnet 4.6)
 - Vercel
 
@@ -18,14 +18,13 @@
 
 1. `npm install`
 2. העתק `.env.example` ל-`.env.local` ומלא את הערכים
-3. הרץ את ה-migration (`supabase/migrations/001_initial.sql`) ב-Supabase SQL Editor
+3. הרץ את ה-migration (`supabase/migrations/001_initial.sql`) ב-Neon SQL Editor
 4. `npm run dev`
 
 ## Environment Variables
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
+DATABASE_URL=
 ANTHROPIC_API_KEY=
 ```
 

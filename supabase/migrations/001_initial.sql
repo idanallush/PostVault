@@ -74,11 +74,5 @@ CREATE TRIGGER posts_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at();
 
--- RLS: מכיוון שזה לשימוש אישי, נפתח הכל
-ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE tags ENABLE ROW LEVEL SECURITY;
-ALTER TABLE posts_tags ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Allow all on posts" ON posts FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all on tags" ON tags FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all on posts_tags" ON posts_tags FOR ALL USING (true) WITH CHECK (true);
+-- Note: RLS removed — Neon doesn't use Supabase RLS.
+-- Access control is handled at the application level.

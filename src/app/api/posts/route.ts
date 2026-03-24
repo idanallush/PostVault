@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { sql } from "@/lib/db";
 import type { Post, Tag, PostWithTags } from "@/types";
 
 export async function GET(request: Request) {
@@ -16,79 +16,100 @@ export async function GET(request: Request) {
     const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "12")));
     const offset = (page - 1) * limit;
 
-    // Build query
-    let query = supabase.from("posts").select("*", { count: "exact" });
-
-    if (platform) query = query.eq("platform", platform);
-    if (category) query = query.eq("ai_category", category);
-    if (contentType) query = query.eq("ai_content_type", contentType);
-    if (favorite === "true") query = query.eq("is_favorite", true);
-
-    if (search) {
-      query = query.or(
-        `ai_summary.ilike.%${search}%,original_text.ilike.%${search}%`,
-      );
-    }
-
-    // If filtering by tag, get post IDs first
+    // Tag filter: get post IDs first
+    let tagPostIds: string[] | null = null;
     if (tagFilter) {
-      const { data: tagLinks } = await supabase
-        .from("posts_tags")
-        .select("post_id")
-        .eq("tag_id", tagFilter);
-      const postIds = tagLinks?.map((l) => l.post_id) || [];
-      if (postIds.length === 0) {
+      const tagLinks = await sql`SELECT post_id FROM posts_tags WHERE tag_id = ${tagFilter}`;
+      tagPostIds = tagLinks.map((l) => l.post_id as string);
+      if (tagPostIds.length === 0) {
         return NextResponse.json({ posts: [], total: 0, page, totalPages: 0 });
       }
-      query = query.in("id", postIds);
     }
 
-    // Sort
-    query = query.order("created_at", { ascending: sort === "oldest" });
+    // Use multiple queries based on filter combinations to avoid dynamic SQL
+    // This approach uses tagged templates which are safe and properly parameterized
+    let posts: Post[];
+    let total: number;
 
-    // Pagination
-    query = query.range(offset, offset + limit - 1);
+    if (search && platform && category && favorite === "true" && tagPostIds) {
+      const countResult = await sql`SELECT COUNT(*)::int as total FROM posts WHERE platform = ${platform} AND ai_category = ${category} AND is_favorite = true AND id = ANY(${tagPostIds}::uuid[]) AND (ai_summary ILIKE ${"%" + search + "%"} OR original_text ILIKE ${"%" + search + "%"})`;
+      total = (countResult[0]?.total as number) || 0;
+      posts = sort === "oldest"
+        ? (await sql`SELECT * FROM posts WHERE platform = ${platform} AND ai_category = ${category} AND is_favorite = true AND id = ANY(${tagPostIds}::uuid[]) AND (ai_summary ILIKE ${"%" + search + "%"} OR original_text ILIKE ${"%" + search + "%"}) ORDER BY created_at ASC LIMIT ${limit} OFFSET ${offset}`) as Post[]
+        : (await sql`SELECT * FROM posts WHERE platform = ${platform} AND ai_category = ${category} AND is_favorite = true AND id = ANY(${tagPostIds}::uuid[]) AND (ai_summary ILIKE ${"%" + search + "%"} OR original_text ILIKE ${"%" + search + "%"}) ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`) as Post[];
+    } else {
+      // Generic approach: fetch all with broad filters, apply the rest in-memory
+      // For better performance, we query with the most common filter combinations
+      const searchPattern = search ? "%" + search + "%" : null;
 
-    const { data: posts, count, error } = await query;
+      // Base query with all possible filters using COALESCE/conditional logic
+      const countResult = await sql`
+        SELECT COUNT(*)::int as total FROM posts
+        WHERE
+          (${platform}::text IS NULL OR platform = ${platform})
+          AND (${category}::text IS NULL OR ai_category = ${category})
+          AND (${contentType}::text IS NULL OR ai_content_type = ${contentType})
+          AND (${favorite !== "true"}::boolean OR is_favorite = true)
+          AND (${!tagPostIds}::boolean OR id = ANY(${tagPostIds ?? []}::uuid[]))
+          AND (${!searchPattern}::boolean OR ai_summary ILIKE ${searchPattern ?? "%"} OR original_text ILIKE ${searchPattern ?? "%"})
+      `;
+      total = (countResult[0]?.total as number) || 0;
 
-    if (error) {
-      console.error("[GET /api/posts]", error);
-      return NextResponse.json({ error: "שגיאה בטעינת פוסטים" }, { status: 500 });
+      posts = sort === "oldest"
+        ? (await sql`
+            SELECT * FROM posts
+            WHERE
+              (${platform}::text IS NULL OR platform = ${platform})
+              AND (${category}::text IS NULL OR ai_category = ${category})
+              AND (${contentType}::text IS NULL OR ai_content_type = ${contentType})
+              AND (${favorite !== "true"}::boolean OR is_favorite = true)
+              AND (${!tagPostIds}::boolean OR id = ANY(${tagPostIds ?? []}::uuid[]))
+              AND (${!searchPattern}::boolean OR ai_summary ILIKE ${searchPattern ?? "%"} OR original_text ILIKE ${searchPattern ?? "%"})
+            ORDER BY created_at ASC LIMIT ${limit} OFFSET ${offset}
+          `) as Post[]
+        : (await sql`
+            SELECT * FROM posts
+            WHERE
+              (${platform}::text IS NULL OR platform = ${platform})
+              AND (${category}::text IS NULL OR ai_category = ${category})
+              AND (${contentType}::text IS NULL OR ai_content_type = ${contentType})
+              AND (${favorite !== "true"}::boolean OR is_favorite = true)
+              AND (${!tagPostIds}::boolean OR id = ANY(${tagPostIds ?? []}::uuid[]))
+              AND (${!searchPattern}::boolean OR ai_summary ILIKE ${searchPattern ?? "%"} OR original_text ILIKE ${searchPattern ?? "%"})
+            ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}
+          `) as Post[];
     }
 
     // Fetch tags for all posts
-    const postIds = (posts || []).map((p) => p.id);
-    let postsWithTags: PostWithTags[] = (posts || []).map((p) => ({
-      ...(p as unknown as Post),
+    const postIds = posts.map((p) => p.id);
+    let postsWithTags: PostWithTags[] = posts.map((p) => ({
+      ...p,
       tags: [] as Tag[],
     }));
 
     if (postIds.length > 0) {
-      const { data: tagLinks } = await supabase
-        .from("posts_tags")
-        .select("post_id, tag_id")
-        .in("post_id", postIds);
+      const tagData = await sql`
+        SELECT t.*, pt.post_id
+        FROM tags t
+        JOIN posts_tags pt ON t.id = pt.tag_id
+        WHERE pt.post_id = ANY(${postIds}::uuid[])
+      `;
 
-      if (tagLinks && tagLinks.length > 0) {
-        const tagIds = [...new Set(tagLinks.map((l) => l.tag_id))];
-        const { data: tags } = await supabase
-          .from("tags")
-          .select("*")
-          .in("id", tagIds);
-
-        const tagMap = new Map((tags || []).map((t) => [t.id, t as unknown as Tag]));
-
+      if (tagData.length > 0) {
         postsWithTags = postsWithTags.map((post) => ({
           ...post,
-          tags: tagLinks
-            .filter((l) => l.post_id === post.id)
-            .map((l) => tagMap.get(l.tag_id))
-            .filter(Boolean) as Tag[],
+          tags: tagData
+            .filter((t) => t.post_id === post.id)
+            .map((t) => ({
+              id: t.id as string,
+              name: t.name as string,
+              color: t.color as string,
+              created_at: t.created_at as string,
+            })),
         }));
       }
     }
 
-    const total = count || 0;
     return NextResponse.json({
       posts: postsWithTags,
       total,
@@ -96,8 +117,10 @@ export async function GET(request: Request) {
       totalPages: Math.ceil(total / limit),
     });
   } catch (err) {
-    // If Supabase isn't configured, return empty results instead of error
-    if (err instanceof Error && (err.message.includes("Supabase") || err.message.includes("supabase") || err.message.includes("Invalid"))) {
+    if (
+      err instanceof Error &&
+      (err.message.includes("DATABASE_URL") || err.message.includes("connect"))
+    ) {
       return NextResponse.json({ posts: [], total: 0, page: 1, totalPages: 0 });
     }
     console.error("[GET /api/posts]", err);
@@ -112,12 +135,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "חסר מזהה פוסט" }, { status: 400 });
     }
 
-    const { error } = await supabase.from("posts").delete().eq("id", id);
-    if (error) {
-      console.error("[DELETE /api/posts]", error);
-      return NextResponse.json({ error: "שגיאה במחיקה" }, { status: 500 });
-    }
-
+    await sql`DELETE FROM posts WHERE id = ${id}`;
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[DELETE /api/posts]", err);

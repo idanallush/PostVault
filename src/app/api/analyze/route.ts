@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { sql } from "@/lib/db";
 import { analyzeContent } from "@/lib/claude";
 import { scrapeContent, createManualContent } from "@/lib/scrapers";
 import { validateUrl, cleanUrl } from "@/lib/parsers/url-parser";
-import type { InsertPost } from "@/types";
+import type { Post, Tag } from "@/types";
 
 // Rate limiting בסיסי - request אחד כל 2 שניות
 let lastRequestTime = 0;
@@ -44,13 +44,9 @@ export async function POST(request: Request) {
     const cleanedUrl = cleanUrl(body.url);
 
     // בדיקה אם כבר קיים ב-DB
-    const { data: existing } = await supabase
-      .from("posts")
-      .select("id")
-      .eq("url", cleanedUrl)
-      .single();
+    const existing = await sql`SELECT id FROM posts WHERE url = ${cleanedUrl} LIMIT 1`;
 
-    if (existing) {
+    if (existing.length > 0) {
       return NextResponse.json(
         { error: "הפוסט הזה כבר נשמר בעבר" },
         { status: 409 },
@@ -77,31 +73,26 @@ export async function POST(request: Request) {
     // ניתוח AI
     const analysis = await analyzeContent(scraped);
 
-    // שמירה ב-Supabase
-    const postData: InsertPost = {
-      url: cleanedUrl,
-      platform: scraped.platform,
-      post_type: scraped.postType,
-      original_text: scraped.text,
-      media_url: scraped.mediaUrl,
-      thumbnail_url: scraped.thumbnailUrl,
-      author_name: scraped.authorName,
-      author_handle: scraped.authorHandle,
-      ai_summary: analysis.summary,
-      ai_category: analysis.category,
-      ai_key_points: analysis.key_points,
-      ai_content_type: analysis.content_type,
-      ai_action_items: analysis.action_items,
-    };
+    // שמירה ב-DB
+    const rows = await sql`
+      INSERT INTO posts (
+        url, platform, post_type, original_text, media_url, thumbnail_url,
+        author_name, author_handle, ai_summary, ai_category, ai_key_points,
+        ai_content_type, ai_action_items
+      ) VALUES (
+        ${cleanedUrl}, ${scraped.platform}, ${scraped.postType},
+        ${scraped.text}, ${scraped.mediaUrl}, ${scraped.thumbnailUrl},
+        ${scraped.authorName}, ${scraped.authorHandle},
+        ${analysis.summary}, ${analysis.category},
+        ${JSON.stringify(analysis.key_points)}::jsonb,
+        ${analysis.content_type},
+        ${JSON.stringify(analysis.action_items)}::jsonb
+      ) RETURNING *
+    `;
 
-    const { data: savedPost, error: postError } = await supabase
-      .from("posts")
-      .insert(postData)
-      .select()
-      .single();
+    const savedPost = rows[0] as Post;
 
-    if (postError || !savedPost) {
-      console.error("[Supabase] Post insert error:", postError);
+    if (!savedPost) {
       return NextResponse.json(
         { error: "שגיאה בשמירת הפוסט" },
         { status: 500 },
@@ -109,22 +100,23 @@ export async function POST(request: Request) {
     }
 
     // יצירת תגיות וחיבור לפוסט
-    const tags = [];
+    const tags: Tag[] = [];
     if (analysis.suggested_tags.length > 0) {
       for (const tagName of analysis.suggested_tags) {
         // upsert - צור או קבל קיים
-        const { data: tag } = await supabase
-          .from("tags")
-          .upsert({ name: tagName }, { onConflict: "name" })
-          .select()
-          .single();
+        await sql`
+          INSERT INTO tags (name) VALUES (${tagName})
+          ON CONFLICT (name) DO NOTHING
+        `;
+        const tagRows = await sql`SELECT * FROM tags WHERE name = ${tagName}`;
+        const tag = tagRows[0] as Tag | undefined;
 
         if (tag) {
           tags.push(tag);
-          // חיבור פוסט-תגית
-          await supabase
-            .from("posts_tags")
-            .insert({ post_id: savedPost.id, tag_id: tag.id });
+          await sql`
+            INSERT INTO posts_tags (post_id, tag_id) VALUES (${savedPost.id}, ${tag.id})
+            ON CONFLICT DO NOTHING
+          `;
         }
       }
     }

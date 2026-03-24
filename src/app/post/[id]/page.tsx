@@ -2,13 +2,11 @@ import { notFound } from "next/navigation";
 import { PostDetail } from "@/components/PostDetail";
 
 async function getPost(id: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    ? `http://localhost:${process.env.PORT || 3000}`
-    : null;
-
-  if (!baseUrl) return null;
+  // DATABASE_URL is server-only, use it to check if DB is configured
+  if (!process.env.DATABASE_URL) return null;
 
   try {
+    const baseUrl = `http://localhost:${process.env.PORT || 3000}`;
     const res = await fetch(`${baseUrl}/api/posts/${id}`, {
       cache: "no-store",
     });

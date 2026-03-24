@@ -14,7 +14,7 @@
 - **Framework:** Next.js 15+ עם App Router
 - **שפה:** TypeScript (strict mode)
 - **עיצוב:** Tailwind CSS v4 + design system מתיקיית `New Claude code`
-- **מסד נתונים:** Supabase
+- **מסד נתונים:** Neon (PostgreSQL serverless)
 - **ניתוח AI:** Claude API
 - **Deployment:** Vercel
 

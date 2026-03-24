@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { sql } from "@/lib/db";
 
 export async function POST(request: Request) {
   try {
@@ -12,15 +12,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "חסר מזהה פוסט" }, { status: 400 });
     }
 
-    const { error } = await supabase
-      .from("posts")
-      .update({ is_favorite: isFavorite })
-      .eq("id", postId);
-
-    if (error) {
-      console.error("[Favorite]", error);
-      return NextResponse.json({ error: "שגיאה בעדכון" }, { status: 500 });
-    }
+    await sql`UPDATE posts SET is_favorite = ${isFavorite} WHERE id = ${postId}`;
 
     return NextResponse.json({ success: true });
   } catch (err) {
