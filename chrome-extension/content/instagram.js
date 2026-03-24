@@ -1,19 +1,8 @@
 // PostVault Instagram Content Script
-// Three approaches: FAB (always works), per-post buttons (DOM-dependent), context menu
+// Uses shared.js (loaded first) for overlay, icons, save flow
 
 (function () {
   'use strict';
-
-  // --- Toast ---
-  function showToast(message, type) {
-    const existing = document.querySelector('.postvault-toast');
-    if (existing) existing.remove();
-    const toast = document.createElement('div');
-    toast.className = `postvault-toast ${type}`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
-  }
 
   // --- Extract page data (meta tags — always works) ---
   function extractPageData() {
@@ -22,7 +11,6 @@
     const ogTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content') || '';
     const ogImage = document.querySelector('meta[property="og:image"]')?.getAttribute('content') || '';
 
-    // Try to get caption from DOM spans (longer text = likely caption)
     let caption = '';
     const spans = document.querySelectorAll('span');
     for (const span of spans) {
@@ -34,7 +22,6 @@
       }
     }
 
-    // Try to get username from links
     let username = null;
     const userLinks = document.querySelectorAll('a[role="link"]');
     for (const a of userLinks) {
@@ -48,12 +35,10 @@
       }
     }
 
-    const text = caption || ogDesc || ogTitle || '';
-
     return {
       url,
       platform: 'instagram',
-      text: text || null,
+      text: caption || ogDesc || ogTitle || null,
       imageUrl: ogImage || null,
       videoUrl: null,
       thumbnailUrl: ogImage || null,
@@ -61,107 +46,79 @@
     };
   }
 
-  // --- Save post flow ---
-  async function saveCurrentPost(feedbackEl) {
-    const setFeedback = (html) => { if (feedbackEl) feedbackEl.innerHTML = html; };
-    setFeedback('⏳');
-
-    try {
-      const data = extractPageData();
-
-      if (!data.text && !data.imageUrl) {
-        throw new Error('לא נמצא תוכן בדף הזה');
-      }
-
-      const response = await chrome.runtime.sendMessage({
-        action: 'analyzePost',
-        data,
-      });
-
-      if (response && response.success) {
-        setFeedback('✅');
-        showToast('הפוסט נשמר ונותח בהצלחה!', 'success');
-      } else {
-        throw new Error((response && response.error) || 'שגיאה');
-      }
-    } catch (error) {
-      setFeedback('❌');
-      showToast(error.message || 'שגיאה בשמירת הפוסט', 'error');
-    }
-
-    setTimeout(() => setFeedback('📚'), 3000);
-  }
-
-  // =====================================================
-  // APPROACH A: Floating Action Button (always visible)
-  // =====================================================
+  // --- FAB ---
   function addFloatingButton() {
     if (document.getElementById('postvault-fab')) return;
-
     const fab = document.createElement('button');
     fab.id = 'postvault-fab';
-    fab.innerHTML = '📚';
+    fab.innerHTML = PV_ICONS.bookmark + '<span class="pv-fab-text">PostVault</span>';
     fab.title = 'שמור דף זה ב-PostVault';
 
-    fab.addEventListener('click', () => saveCurrentPost(fab));
+    fab.addEventListener('click', () => {
+      fab.innerHTML = PV_ICONS.spinner + '<span class="pv-fab-text">שומר...</span>';
+      savePostWithOverlay(extractPageData).finally(() => {
+        setTimeout(() => {
+          fab.className = '';
+          fab.innerHTML = PV_ICONS.bookmark + '<span class="pv-fab-text">PostVault</span>';
+        }, 2000);
+      });
+    });
+
     document.body.appendChild(fab);
   }
 
-  // =====================================================
-  // APPROACH B: Per-post buttons (DOM-dependent)
-  // Instagram Reels use SVG buttons for Like/Comment/Share/Save/More
-  // We inject our button near the "Save" or "More" button
-  // =====================================================
+  // --- Per-reel inline buttons ---
   function addPerPostButtons() {
-    // Find all "Save" SVG buttons as anchors for per-reel buttons
     const saveIcons = document.querySelectorAll('svg[aria-label="Save"]');
-
     for (const svg of saveIcons) {
-      // Walk up to find the clickable container
-      const btnContainer = svg.closest('[role="button"]')
-        || svg.closest('button')
-        || svg.parentElement;
-
+      const btnContainer = svg.closest('[role="button"]') || svg.closest('button') || svg.parentElement;
       if (!btnContainer) continue;
-
-      // The column of action buttons is the parent of these buttons
       const actionsColumn = btnContainer.parentElement;
-      if (!actionsColumn) continue;
-      if (actionsColumn.querySelector('.postvault-btn')) continue;
+      if (!actionsColumn || actionsColumn.querySelector('.postvault-reel-btn')) continue;
+
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'display:flex;flex-direction:column;align-items:center;';
 
       const btn = document.createElement('button');
       btn.className = 'postvault-btn postvault-reel-btn';
-      btn.innerHTML = '📚';
+      btn.innerHTML = PV_ICONS.bookmarkSm;
       btn.title = 'שמור ב-PostVault';
+
+      const label = document.createElement('span');
+      label.className = 'postvault-reel-label';
+      label.textContent = 'שמור';
 
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        saveCurrentPost(btn);
+        btn.innerHTML = PV_ICONS.spinner;
+        label.textContent = '...';
+        savePostWithOverlay(extractPageData).finally(() => {
+          setTimeout(() => {
+            btn.innerHTML = PV_ICONS.bookmarkSm;
+            label.textContent = 'שמור';
+          }, 2000);
+        });
       });
 
-      // Insert after the Save button
-      actionsColumn.appendChild(btn);
+      wrapper.appendChild(btn);
+      wrapper.appendChild(label);
+      actionsColumn.appendChild(wrapper);
     }
   }
 
-  // =====================================================
-  // APPROACH C: Context menu listener
-  // =====================================================
+  // --- Context menu listener ---
   chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     if (request.action === 'extractAndSave') {
-      const data = extractPageData();
-      sendResponse(data);
-      // Also trigger the save
-      saveCurrentPost(document.getElementById('postvault-fab'));
+      sendResponse({ ok: true });
+      savePostWithOverlay(extractPageData);
     }
   });
 
-  // --- Initialize ---
+  // --- Init ---
   addFloatingButton();
   addPerPostButtons();
 
-  // MutationObserver for dynamic content
   let scanTimeout;
   const observer = new MutationObserver(() => {
     clearTimeout(scanTimeout);
@@ -170,6 +127,5 @@
       addPerPostButtons();
     }, 800);
   });
-
   observer.observe(document.body, { childList: true, subtree: true });
 })();

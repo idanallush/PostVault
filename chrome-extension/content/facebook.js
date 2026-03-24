@@ -1,56 +1,30 @@
 // PostVault Facebook Content Script
-// Three approaches: FAB (always works), per-post buttons (DOM-dependent), context menu
+// Uses shared.js (loaded first) for overlay, icons, save flow
 
 (function () {
   'use strict';
 
-  // --- Toast ---
-  function showToast(message, type) {
-    const existing = document.querySelector('.postvault-toast');
-    if (existing) existing.remove();
-    const toast = document.createElement('div');
-    toast.className = `postvault-toast ${type}`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
-  }
-
-  // --- Check if URL is a specific post (not generic feed) ---
   function isSpecificPostUrl(url) {
     return /\/(posts|photo|videos|reel|watch|permalink|story\.php)/.test(url)
       || /[?&](v|story_fbid|fbid)=/.test(url)
-      || /\/fb\.watch\//.test(url);
+      || /fb\.watch\//.test(url);
   }
 
-  // --- Extract page data ---
   function extractPageData() {
     let url = window.location.href.split('?')[0];
-
-    // Prefer og:url which is the canonical post URL
     const ogUrl = document.querySelector('meta[property="og:url"]')?.getAttribute('content');
     if (ogUrl && isSpecificPostUrl(ogUrl)) {
       url = ogUrl.split('?')[0];
     }
 
-    // Check if this is a generic feed (no specific post)
     if (!isSpecificPostUrl(url) && !isSpecificPostUrl(window.location.href)) {
-      return {
-        url: null, // signal that this is a feed page
-        platform: 'facebook',
-        text: null,
-        imageUrl: null,
-        videoUrl: null,
-        thumbnailUrl: null,
-        authorName: null,
-        isFeedPage: true,
-      };
+      return { url: null, platform: 'facebook', text: null, imageUrl: null, isFeedPage: true };
     }
 
     const ogDesc = document.querySelector('meta[property="og:description"]')?.getAttribute('content') || '';
     const ogTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content') || '';
     const ogImage = document.querySelector('meta[property="og:image"]')?.getAttribute('content') || '';
 
-    // Try to get text from DOM
     let caption = '';
     const dirAutos = document.querySelectorAll('div[dir="auto"]');
     for (const el of dirAutos) {
@@ -60,73 +34,39 @@
       }
     }
 
-    const text = caption || ogDesc || ogTitle || '';
-
     return {
       url,
       platform: 'facebook',
-      text: text || null,
+      text: caption || ogDesc || ogTitle || null,
       imageUrl: ogImage || null,
       videoUrl: null,
       thumbnailUrl: ogImage || null,
       authorName: null,
-      isFeedPage: false,
     };
   }
 
-  // --- Save post flow ---
-  async function saveCurrentPost(feedbackEl) {
-    const setFeedback = (html) => { if (feedbackEl) feedbackEl.innerHTML = html; };
-    setFeedback('⏳');
-
-    try {
-      const data = extractPageData();
-
-      if (data.isFeedPage) {
-        throw new Error('נווט לדף של הפוסט הספציפי כדי לשמור אותו');
-      }
-
-      if (!data.text && !data.imageUrl) {
-        throw new Error('לא נמצא תוכן בדף הזה');
-      }
-
-      const response = await chrome.runtime.sendMessage({
-        action: 'analyzePost',
-        data,
-      });
-
-      if (response && response.success) {
-        setFeedback('✅');
-        showToast('הפוסט נשמר ונותח בהצלחה!', 'success');
-      } else {
-        throw new Error((response && response.error) || 'שגיאה');
-      }
-    } catch (error) {
-      setFeedback('❌');
-      showToast(error.message || 'שגיאה בשמירת הפוסט', 'error');
-    }
-
-    setTimeout(() => setFeedback('📚'), 3000);
-  }
-
-  // =====================================================
-  // APPROACH A: Floating Action Button (always visible)
-  // =====================================================
+  // --- FAB ---
   function addFloatingButton() {
     if (document.getElementById('postvault-fab')) return;
-
     const fab = document.createElement('button');
     fab.id = 'postvault-fab';
-    fab.innerHTML = '📚';
+    fab.innerHTML = PV_ICONS.bookmark + '<span class="pv-fab-text">PostVault</span>';
     fab.title = 'שמור דף זה ב-PostVault';
 
-    fab.addEventListener('click', () => saveCurrentPost(fab));
+    fab.addEventListener('click', () => {
+      fab.innerHTML = PV_ICONS.spinner + '<span class="pv-fab-text">שומר...</span>';
+      savePostWithOverlay(extractPageData).finally(() => {
+        setTimeout(() => {
+          fab.className = '';
+          fab.innerHTML = PV_ICONS.bookmark + '<span class="pv-fab-text">PostVault</span>';
+        }, 2000);
+      });
+    });
+
     document.body.appendChild(fab);
   }
 
-  // =====================================================
-  // APPROACH B: Per-post buttons on [role="article"]
-  // =====================================================
+  // --- Per-post buttons ---
   function addPerPostButtons() {
     const articles = document.querySelectorAll('[role="article"]');
     for (const article of articles) {
@@ -136,31 +76,28 @@
 
       const btn = document.createElement('button');
       btn.className = 'postvault-btn';
-      btn.innerHTML = '📚 PostVault';
+      btn.innerHTML = PV_ICONS.bookmark + ' PostVault';
       btn.title = 'שמור ונתח ב-PostVault';
 
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        saveCurrentPost(btn);
+        savePostWithOverlay(extractPageData);
       });
 
       article.appendChild(btn);
     }
   }
 
-  // =====================================================
-  // APPROACH C: Context menu listener
-  // =====================================================
+  // --- Context menu listener ---
   chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     if (request.action === 'extractAndSave') {
-      const data = extractPageData();
-      sendResponse(data);
-      saveCurrentPost(document.getElementById('postvault-fab'));
+      sendResponse({ ok: true });
+      savePostWithOverlay(extractPageData);
     }
   });
 
-  // --- Initialize ---
+  // --- Init ---
   addFloatingButton();
   addPerPostButtons();
 
@@ -172,6 +109,5 @@
       addPerPostButtons();
     }, 800);
   });
-
   observer.observe(document.body, { childList: true, subtree: true });
 })();

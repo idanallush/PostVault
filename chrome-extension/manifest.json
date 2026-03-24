@@ -16,13 +16,13 @@
   "content_scripts": [
     {
       "matches": ["https://www.instagram.com/*"],
-      "js": ["content/instagram.js"],
+      "js": ["content/shared.js", "content/instagram.js"],
       "css": ["content/styles.css"],
       "run_at": "document_idle"
     },
     {
       "matches": ["https://www.facebook.com/*"],
-      "js": ["content/facebook.js"],
+      "js": ["content/shared.js", "content/facebook.js"],
       "css": ["content/styles.css"],
       "run_at": "document_idle"
     }

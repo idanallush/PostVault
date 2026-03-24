@@ -9,83 +9,123 @@ import type { PostWithTags, Platform } from "@/types";
 interface PostCardProps {
   post: PostWithTags;
   onToggleFavorite: (id: string) => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
-export function PostCard({ post, onToggleFavorite }: PostCardProps) {
+export function PostCard({ post, onToggleFavorite, selectable, selected, onToggleSelect }: PostCardProps) {
   const maxTags = 3;
   const visibleTags = post.tags.slice(0, maxTags);
   const extraCount = post.tags.length - maxTags;
 
-  return (
-    <Link href={`/post/${post.id}`} className="block">
-      <div className="group rounded-xl bg-surface border border-surface-border overflow-hidden hover:border-foreground-dim/20 transition-all">
-        {/* Thumbnail */}
-        {post.thumbnail_url && (
-          <div className="aspect-video bg-background overflow-hidden">
-            <img
-              src={post.thumbnail_url}
-              alt=""
-              className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
-              loading="lazy"
-            />
+  const cardContent = (
+    <div className={`group rounded-xl bg-surface border overflow-hidden transition-all ${
+      selected ? "border-accent-gold ring-1 ring-accent-gold/30" : "border-surface-border hover:border-foreground-dim/20"
+    }`}>
+      {/* Thumbnail */}
+      {post.thumbnail_url && (
+        <div className="aspect-video bg-background overflow-hidden relative">
+          <img
+            src={post.thumbnail_url}
+            alt=""
+            className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+            loading="lazy"
+          />
+          {selectable && (
+            <div className="absolute top-2 right-2">
+              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                selected ? "bg-accent-gold border-accent-gold" : "border-white/60 bg-black/30"
+              }`}>
+                {selected && <span className="text-background text-xs font-bold">{"\u2713"}</span>}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="p-4">
+        {/* Checkbox for cards without thumbnail */}
+        {selectable && !post.thumbnail_url && (
+          <div className="flex justify-end mb-2">
+            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+              selected ? "bg-accent-gold border-accent-gold" : "border-border"
+            }`}>
+              {selected && <span className="text-background text-xs font-bold">{"\u2713"}</span>}
+            </div>
           </div>
         )}
 
-        <div className="p-4">
-          {/* Header: Platform + Favorite */}
-          <div className="flex items-center justify-between mb-2">
-            <PlatformBadge platform={post.platform as Platform} />
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onToggleFavorite(post.id);
-              }}
-              className={`text-sm transition-colors ${
-                post.is_favorite ? "text-accent-gold" : "text-foreground-dim hover:text-accent-gold"
-              }`}
-              aria-label={post.is_favorite ? "הסר ממועדפים" : "הוסף למועדפים"}
-            >
-              {post.is_favorite ? "\u2605" : "\u2606"}
-            </button>
-          </div>
-
-          {/* Summary */}
-          <p className="text-sm text-foreground leading-relaxed line-clamp-2 mb-3">
-            {post.ai_summary}
-          </p>
-
-          {/* Category + Content Type */}
-          <div className="flex items-center gap-1.5 mb-3">
-            <CategoryBadge category={post.ai_category} />
-            {post.ai_content_type && <ContentTypeBadge contentType={post.ai_content_type} />}
-          </div>
-
-          {/* Tags */}
-          {post.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-3">
-              {visibleTags.map((tag) => (
-                <span
-                  key={tag.id}
-                  className="px-2 py-0.5 rounded text-[11px] bg-accent-gold/10 text-accent-gold"
-                >
-                  {tag.name}
-                </span>
-              ))}
-              {extraCount > 0 && (
-                <span className="px-2 py-0.5 rounded text-[11px] text-foreground-dim">
-                  +{extraCount}
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Date */}
-          <p className="text-xs text-foreground-dim">
-            {formatHebrewDate(post.created_at)}
-          </p>
+        {/* Header: Platform + Favorite */}
+        <div className="flex items-center justify-between mb-2">
+          <PlatformBadge platform={post.platform as Platform} />
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleFavorite(post.id);
+            }}
+            className={`text-sm transition-colors ${
+              post.is_favorite ? "text-accent-gold" : "text-foreground-dim hover:text-accent-gold"
+            }`}
+            aria-label={post.is_favorite ? "הסר ממועדפים" : "הוסף למועדפים"}
+          >
+            {post.is_favorite ? "\u2605" : "\u2606"}
+          </button>
         </div>
+
+        {/* Summary */}
+        <p className="text-sm text-foreground leading-relaxed line-clamp-2 mb-3">
+          {post.ai_summary}
+        </p>
+
+        {/* Category + Content Type */}
+        <div className="flex items-center gap-1.5 mb-3">
+          <CategoryBadge category={post.ai_category} />
+          {post.ai_content_type && <ContentTypeBadge contentType={post.ai_content_type} />}
+        </div>
+
+        {/* Tags */}
+        {post.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-3">
+            {visibleTags.map((tag) => (
+              <span
+                key={tag.id}
+                className="px-2 py-0.5 rounded text-[11px] bg-accent-gold/10 text-accent-gold"
+              >
+                {tag.name}
+              </span>
+            ))}
+            {extraCount > 0 && (
+              <span className="px-2 py-0.5 rounded text-[11px] text-foreground-dim">
+                +{extraCount}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Date */}
+        <p className="text-xs text-foreground-dim">
+          {formatHebrewDate(post.created_at)}
+        </p>
       </div>
+    </div>
+  );
+
+  if (selectable) {
+    return (
+      <div
+        className="block cursor-pointer"
+        onClick={() => onToggleSelect?.(post.id)}
+      >
+        {cardContent}
+      </div>
+    );
+  }
+
+  return (
+    <Link href={`/post/${post.id}`} className="block">
+      {cardContent}
     </Link>
   );
 }
