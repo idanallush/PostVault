@@ -25,6 +25,9 @@ export async function scrapeYouTube(url: string): Promise<ScrapedContent> {
       originalUrl: url,
       scrapedSuccessfully: false,
       needsManualInput: true,
+      videoUrl: null,
+      transcript: null,
+      frameDescription: null,
       error: "לא הצלחנו לזהות את מזהה הסרטון",
     };
   }
@@ -81,6 +84,9 @@ export async function scrapeYouTube(url: string): Promise<ScrapedContent> {
     originalUrl: url,
     scrapedSuccessfully,
     needsManualInput: !scrapedSuccessfully,
+    videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+    transcript: transcriptText,
+    frameDescription: null,
     error: scrapedSuccessfully ? undefined : "לא הצלחנו לשלוף את תוכן הסרטון",
   };
 }

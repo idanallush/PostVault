@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 const steps = [
   { icon: "\uD83D\uDD0D", text: "מזהה פלטפורמה..." },
   { icon: "\uD83D\uDCE5", text: "שולף תוכן..." },
+  { icon: "\uD83D\uDDBC\uFE0F", text: "מנתח תמונות..." },
+  { icon: "\uD83C\uDFA4", text: "מתמלל אודיו..." },
   { icon: "\uD83E\uDD16", text: "מנתח עם AI..." },
   { icon: "\uD83D\uDCBE", text: "שומר בספרייה..." },
 ];
@@ -15,7 +17,7 @@ export function LoadingAnalysis() {
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveStep((prev) => (prev < steps.length - 1 ? prev + 1 : prev));
-    }, 2000);
+    }, 2500);
     return () => clearInterval(interval);
   }, []);
 

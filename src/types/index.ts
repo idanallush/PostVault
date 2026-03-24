@@ -44,5 +44,14 @@ export interface ScrapedContent {
   originalUrl: string;
   scrapedSuccessfully: boolean;
   needsManualInput: boolean;
+  videoUrl: string | null;
+  transcript: string | null;
+  frameDescription: string | null;
   error?: string;
+}
+
+export interface VideoAnalysis {
+  transcript: string | null;
+  frameDescriptions: string[];
+  combinedAnalysis: string;
 }

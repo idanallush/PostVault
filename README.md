@@ -11,7 +11,8 @@
 - Next.js 16 + React 19 + TypeScript
 - Tailwind CSS v4
 - Neon (PostgreSQL serverless)
-- Claude AI (Sonnet 4.6)
+- Claude AI (Sonnet 4.6) + Claude Vision
+- OpenAI Whisper (תמלול אודיו)
 - Vercel
 
 ## התקנה מקומית
@@ -26,6 +27,7 @@
 ```
 DATABASE_URL=
 ANTHROPIC_API_KEY=
+OPENAI_API_KEY=
 ```
 
 ## פקודות

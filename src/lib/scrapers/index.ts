@@ -22,6 +22,9 @@ export async function scrapeContent(url: string): Promise<ScrapedContent> {
       originalUrl: url,
       scrapedSuccessfully: false,
       needsManualInput: true,
+      videoUrl: null,
+      transcript: null,
+      frameDescription: null,
       error: validation.error || "כתובת לא תקינה",
     };
   }
@@ -69,5 +72,8 @@ export function createManualContent(
     originalUrl: url,
     scrapedSuccessfully: true,
     needsManualInput: false,
+    videoUrl: null,
+    transcript: null,
+    frameDescription: null,
   };
 }

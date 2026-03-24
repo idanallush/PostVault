@@ -9,19 +9,27 @@ const anthropic = new Anthropic({
 export async function analyzeContent(
   content: ScrapedContent,
 ): Promise<AnalysisResult> {
-  if (!content.text) {
+  if (!content.text && !content.transcript && !content.frameDescription) {
     throw new Error("אין טקסט לניתוח");
   }
 
+  // שילוב כל מקורות הטקסט לניתוח
+  const textForAnalysis = content.text
+    || content.transcript
+    || content.frameDescription
+    || "";
+
   const { system, user } = buildAnalysisPrompt({
     platform: content.platform,
-    text: content.text,
+    text: textForAnalysis,
+    transcript: content.transcript,
+    frameDescription: content.frameDescription,
     hasVideo: content.postType === "video",
     hasImage: content.postType === "image" || content.postType === "carousel",
   });
 
   const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
+    model: "claude-sonnet-4-6-20250514",
     max_tokens: 1500,
     system,
     messages: [{ role: "user", content: user }],

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { analyzeContent } from "@/lib/claude";
 import { scrapeContent, createManualContent } from "@/lib/scrapers";
+import { analyzeVideo } from "@/lib/video-analyzer";
 import { validateUrl, cleanUrl } from "@/lib/parsers/url-parser";
 import type { Post, Tag } from "@/types";
 
@@ -58,8 +59,32 @@ export async function POST(request: Request) {
       ? createManualContent(cleanedUrl, validation.platform, body.manualText)
       : await scrapeContent(cleanedUrl);
 
-    // בדיקה שיש טקסט לנתח
-    if (!scraped.text && !body.manualText) {
+    // שדרוג: ניתוח וידאו אם רלוונטי
+    if (scraped.postType === "video" || scraped.thumbnailUrl) {
+      try {
+        const videoResult = await analyzeVideo({
+          videoUrl: scraped.videoUrl,
+          thumbnailUrl: scraped.thumbnailUrl,
+          platform: scraped.platform,
+          caption: scraped.text,
+        });
+
+        // העשרת ה-scraped content עם תוצאות הניתוח
+        if (videoResult.transcript && !scraped.transcript) {
+          scraped.transcript = videoResult.transcript;
+        }
+        if (videoResult.frameDescriptions.length > 0 && !scraped.frameDescription) {
+          scraped.frameDescription = videoResult.frameDescriptions.join("\n\n");
+        }
+      } catch (err) {
+        // Graceful degradation - ממשיכים בלי ניתוח וידאו
+        console.error("[Video Analysis] Error (continuing without):", err);
+      }
+    }
+
+    // בדיקה שיש מספיק תוכן לנתח
+    const hasContent = scraped.text || scraped.transcript || scraped.frameDescription;
+    if (!hasContent && !body.manualText) {
       return NextResponse.json(
         {
           error: "לא הצלחנו לשלוף תוכן מהפוסט. יש להדביק את הטקסט ידנית",
@@ -73,6 +98,15 @@ export async function POST(request: Request) {
     // ניתוח AI
     const analysis = await analyzeContent(scraped);
 
+    // טקסט מקורי לשמירה — שילוב כל המקורות
+    const originalText = [
+      scraped.text,
+      scraped.transcript ? `[תמלול] ${scraped.transcript}` : null,
+      scraped.frameDescription ? `[ויזואלי] ${scraped.frameDescription}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n\n") || null;
+
     // שמירה ב-DB
     const rows = await sql`
       INSERT INTO posts (
@@ -81,7 +115,7 @@ export async function POST(request: Request) {
         ai_content_type, ai_action_items
       ) VALUES (
         ${cleanedUrl}, ${scraped.platform}, ${scraped.postType},
-        ${scraped.text}, ${scraped.mediaUrl}, ${scraped.thumbnailUrl},
+        ${originalText}, ${scraped.mediaUrl}, ${scraped.thumbnailUrl},
         ${scraped.authorName}, ${scraped.authorHandle},
         ${analysis.summary}, ${analysis.category},
         ${JSON.stringify(analysis.key_points)}::jsonb,
@@ -103,7 +137,6 @@ export async function POST(request: Request) {
     const tags: Tag[] = [];
     if (analysis.suggested_tags.length > 0) {
       for (const tagName of analysis.suggested_tags) {
-        // upsert - צור או קבל קיים
         await sql`
           INSERT INTO tags (name) VALUES (${tagName})
           ON CONFLICT (name) DO NOTHING

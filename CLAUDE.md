@@ -15,7 +15,9 @@
 - **שפה:** TypeScript (strict mode)
 - **עיצוב:** Tailwind CSS v4 + design system מתיקיית `New Claude code`
 - **מסד נתונים:** Neon (PostgreSQL serverless)
-- **ניתוח AI:** Claude API
+- **ניתוח AI:** Claude API (Vision + Text)
+- **תמלול אודיו:** OpenAI Whisper API
+- **שליפת תוכן:** Instagram Embed, Facebook oEmbed, YouTube Transcript
 - **Deployment:** Vercel
 
 ## מבנה תיקיות

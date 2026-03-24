@@ -1,6 +1,8 @@
 export function buildAnalysisPrompt(content: {
   platform: string;
   text: string;
+  transcript?: string | null;
+  frameDescription?: string | null;
   hasVideo: boolean;
   hasImage: boolean;
 }): { system: string; user: string } {
@@ -19,17 +21,25 @@ export function buildAnalysisPrompt(content: {
 - אם זה מדריך: פרט את הצעדים בדיוק
 - אם זה חינוכי: הוצא את הנקודות החשובות
 - אם זה השראתי: תפוס את הרעיון המרכזי
-- התגיות צריכות להיות קצרות ובעברית`;
+- התגיות צריכות להיות קצרות ובעברית
+- אם קיבלת תמלול וידאו, תיאור ויזואלי וכיתוב — שלב את כל המקורות לניתוח אחד מקיף`;
 
-  const user = `נתח את הפוסט הבא מ-${content.platform}:
+  // בניית תוכן הפרומפט עם כל המקורות הזמינים
+  let contentSection = `נתח את הפוסט הבא מ-${content.platform}:\n\nסוג תוכן: ${contentType}`;
 
-סוג תוכן: ${contentType}
-תוכן:
----
-${content.text}
----
+  contentSection += `\n\nכיתוב/טקסט הפוסט:\n---\n${content.text}\n---`;
 
-החזר JSON בפורמט הזה בלבד:
+  if (content.transcript) {
+    contentSection += `\n\nתמלול הוידאו (מה נאמר בסרטון):\n---\n${content.transcript}\n---`;
+  }
+
+  if (content.frameDescription) {
+    contentSection += `\n\nתיאור ויזואלי (מה רואים בסרטון/תמונה):\n---\n${content.frameDescription}\n---`;
+  }
+
+  const user = `${contentSection}
+
+נתח את כל המידע ביחד והחזר JSON בפורמט הזה בלבד:
 {
   "summary": "סיכום תמציתי בעברית",
   "category": "אחד מ: טכנולוגיה, עסקים, בריאות, אוכל, ספורט, יצירתיות, לימוד, השראה, חדשות, טיפים, ביקורת, בידור, אחר",
