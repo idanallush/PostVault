@@ -1,8 +1,10 @@
-import { ApifyClient } from "apify-client";
+/**
+ * Apify REST API integration (no SDK — works on any serverless platform).
+ * Uses the synchronous run-and-get-dataset-items endpoint.
+ * https://docs.apify.com/api/v2#/reference/actors/run-actor-synchronously-and-get-dataset-items
+ */
 
-const client = new ApifyClient({
-  token: process.env.APIFY_API_TOKEN!,
-});
+const APIFY_BASE = "https://api.apify.com/v2/acts";
 
 interface ApifyScrapedContent {
   text: string | null;
@@ -15,10 +17,6 @@ interface ApifyScrapedContent {
   postType: "image" | "video" | "carousel" | "text";
 }
 
-/**
- * Scrape with Apify — with timeout wrapper.
- * Apify Actors can take 30-90 seconds. We cap at 45s so Vercel (60s) doesn't timeout.
- */
 export async function scrapeWithApify(
   url: string,
   platform: "instagram" | "facebook",
@@ -29,13 +27,9 @@ export async function scrapeWithApify(
   }
 
   try {
-    const result = await Promise.race([
-      platform === "instagram" ? scrapeInstagram(url) : scrapeFacebook(url),
-      new Promise<null>((_, reject) =>
-        setTimeout(() => reject(new Error("Apify timeout")), 45000),
-      ),
-    ]);
-    return result;
+    return platform === "instagram"
+      ? await scrapeInstagram(url)
+      : await scrapeFacebook(url);
   } catch (error) {
     console.error(`[Apify] ${platform} scraping failed:`, error);
     return null;
@@ -43,24 +37,35 @@ export async function scrapeWithApify(
 }
 
 async function scrapeInstagram(url: string): Promise<ApifyScrapedContent | null> {
-  console.log("[Apify] Running Instagram scraper...");
+  console.log("[Apify] Running Instagram scraper via REST API...");
 
-  const run = await client.actor("apify/instagram-scraper").call(
+  const token = process.env.APIFY_API_TOKEN;
+  const response = await fetch(
+    `${APIFY_BASE}/apify~instagram-scraper/run-sync-get-dataset-items?token=${token}`,
     {
-      directUrls: [url],
-      resultsLimit: 1,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        directUrls: [url],
+        resultsLimit: 1,
+      }),
+      signal: AbortSignal.timeout(50000),
     },
-    { timeout: 120, memory: 256 },
   );
 
-  const { items } = await client.dataset(run.defaultDatasetId).listItems();
+  if (!response.ok) {
+    console.error(`[Apify] Instagram HTTP ${response.status}`);
+    return null;
+  }
+
+  const items = (await response.json()) as Record<string, unknown>[];
 
   if (!items || items.length === 0) {
     console.log("[Apify] Instagram: no results");
     return null;
   }
 
-  const post = items[0] as Record<string, unknown>;
+  const post = items[0];
   console.log("[Apify] Instagram: got result, type:", post.type);
 
   return {
@@ -81,26 +86,36 @@ async function scrapeInstagram(url: string): Promise<ApifyScrapedContent | null>
 }
 
 async function scrapeFacebook(url: string): Promise<ApifyScrapedContent | null> {
-  console.log("[Apify] Running Facebook scraper...");
+  console.log("[Apify] Running Facebook scraper via REST API...");
 
-  const run = await client.actor("apify/facebook-posts-scraper").call(
+  const token = process.env.APIFY_API_TOKEN;
+  const response = await fetch(
+    `${APIFY_BASE}/apify~facebook-posts-scraper/run-sync-get-dataset-items?token=${token}`,
     {
-      startUrls: [{ url }],
-      maxPosts: 1,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        startUrls: [{ url }],
+        maxPosts: 1,
+      }),
+      signal: AbortSignal.timeout(50000),
     },
-    { timeout: 120, memory: 256 },
   );
 
-  const { items } = await client.dataset(run.defaultDatasetId).listItems();
+  if (!response.ok) {
+    console.error(`[Apify] Facebook HTTP ${response.status}`);
+    return null;
+  }
+
+  const items = (await response.json()) as Record<string, unknown>[];
 
   if (!items || items.length === 0) {
     console.log("[Apify] Facebook: no results");
     return null;
   }
 
-  const post = items[0] as Record<string, unknown>;
+  const post = items[0];
   const media = post.media as Array<Record<string, unknown>> | undefined;
-
   const hasVideo = !!(post.videoUrl || post.video);
   const hasImage = !!(post.imageUrl || post.image || media?.[0]);
 
