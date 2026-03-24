@@ -126,7 +126,19 @@ export function cleanUrl(url: string): string {
       parsed.hash = "";
     }
 
-    return parsed.toString();
+    let result = parsed.toString();
+
+    // הסרת trailing slash (אבל לא root /)
+    if (result.endsWith("/") && parsed.pathname !== "/") {
+      result = result.slice(0, -1);
+    }
+
+    // הסרת query string ריק (?)
+    if (result.endsWith("?")) {
+      result = result.slice(0, -1);
+    }
+
+    return result;
   } catch {
     return url;
   }

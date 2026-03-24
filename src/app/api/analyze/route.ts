@@ -110,27 +110,43 @@ export async function POST(request: Request) {
         .filter(Boolean)
         .join("\n\n") || null;
 
-    // שמירה ב-DB
-    const rows = await sql`
-      INSERT INTO posts (
-        url, platform, post_type, original_text, media_url, thumbnail_url,
-        author_name, author_handle, ai_summary, ai_category, ai_key_points,
-        ai_content_type, ai_action_items
-      ) VALUES (
-        ${cleanedUrl}, ${scraped.platform}, ${scraped.postType},
-        ${originalText}, ${scraped.mediaUrl}, ${scraped.thumbnailUrl},
-        ${scraped.authorName}, ${scraped.authorHandle},
-        ${analysis.summary}, ${analysis.category},
-        ${JSON.stringify(analysis.key_points)}::jsonb,
-        ${analysis.content_type},
-        ${JSON.stringify(analysis.action_items)}::jsonb
-      ) RETURNING *
-    `;
+    // שמירה ב-DB (with duplicate key handling)
+    let savedPost: Post;
+    try {
+      const rows = await sql`
+        INSERT INTO posts (
+          url, platform, post_type, original_text, media_url, thumbnail_url,
+          author_name, author_handle, ai_summary, ai_category, ai_key_points,
+          ai_content_type, ai_action_items
+        ) VALUES (
+          ${cleanedUrl}, ${scraped.platform}, ${scraped.postType},
+          ${originalText}, ${scraped.mediaUrl}, ${scraped.thumbnailUrl},
+          ${scraped.authorName}, ${scraped.authorHandle},
+          ${analysis.summary}, ${analysis.category},
+          ${JSON.stringify(analysis.key_points)}::jsonb,
+          ${analysis.content_type},
+          ${JSON.stringify(analysis.action_items)}::jsonb
+        ) RETURNING *
+      `;
 
-    const savedPost = rows[0] as Post;
+      savedPost = rows[0] as Post;
 
-    if (!savedPost) {
-      return jsonResponse({ error: "שגיאה בשמירת הפוסט" }, 500);
+      if (!savedPost) {
+        return jsonResponse({ error: "שגיאה בשמירת הפוסט" }, 500);
+      }
+    } catch (insertErr: unknown) {
+      // Duplicate key error (23505) — post already exists
+      const errCode = (insertErr as { code?: string })?.code;
+      if (errCode === "23505") {
+        const existingRows = await sql`SELECT * FROM posts WHERE url = ${cleanedUrl} LIMIT 1`;
+        if (existingRows.length > 0) {
+          return jsonResponse(
+            { error: "הפוסט הזה כבר שמור בספרייה!", post: existingRows[0] },
+            409,
+          );
+        }
+      }
+      throw insertErr;
     }
 
     // יצירת תגיות וחיבור לפוסט

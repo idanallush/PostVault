@@ -15,9 +15,37 @@
     setTimeout(() => toast.remove(), 3000);
   }
 
+  // --- Check if URL is a specific post (not generic feed) ---
+  function isSpecificPostUrl(url) {
+    return /\/(posts|photo|videos|reel|watch|permalink|story\.php)/.test(url)
+      || /[?&](v|story_fbid|fbid)=/.test(url)
+      || /\/fb\.watch\//.test(url);
+  }
+
   // --- Extract page data ---
   function extractPageData() {
-    const url = window.location.href.split('?')[0];
+    let url = window.location.href.split('?')[0];
+
+    // Prefer og:url which is the canonical post URL
+    const ogUrl = document.querySelector('meta[property="og:url"]')?.getAttribute('content');
+    if (ogUrl && isSpecificPostUrl(ogUrl)) {
+      url = ogUrl.split('?')[0];
+    }
+
+    // Check if this is a generic feed (no specific post)
+    if (!isSpecificPostUrl(url) && !isSpecificPostUrl(window.location.href)) {
+      return {
+        url: null, // signal that this is a feed page
+        platform: 'facebook',
+        text: null,
+        imageUrl: null,
+        videoUrl: null,
+        thumbnailUrl: null,
+        authorName: null,
+        isFeedPage: true,
+      };
+    }
+
     const ogDesc = document.querySelector('meta[property="og:description"]')?.getAttribute('content') || '';
     const ogTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content') || '';
     const ogImage = document.querySelector('meta[property="og:image"]')?.getAttribute('content') || '';
@@ -42,6 +70,7 @@
       videoUrl: null,
       thumbnailUrl: ogImage || null,
       authorName: null,
+      isFeedPage: false,
     };
   }
 
@@ -52,6 +81,10 @@
 
     try {
       const data = extractPageData();
+
+      if (data.isFeedPage) {
+        throw new Error('נווט לדף של הפוסט הספציפי כדי לשמור אותו');
+      }
 
       if (!data.text && !data.imageUrl) {
         throw new Error('לא נמצא תוכן בדף הזה');
