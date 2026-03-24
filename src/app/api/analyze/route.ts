@@ -6,6 +6,21 @@ import { analyzeVideo } from "@/lib/video-analyzer";
 import { validateUrl, cleanUrl } from "@/lib/parsers/url-parser";
 import type { Post, Tag } from "@/types";
 
+// CORS headers for Chrome Extension support
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: corsHeaders });
+}
+
+function jsonResponse(data: unknown, status = 200) {
+  return NextResponse.json(data, { status, headers: corsHeaders });
+}
+
 // Rate limiting בסיסי - request אחד כל 2 שניות
 let lastRequestTime = 0;
 
@@ -13,10 +28,7 @@ export async function POST(request: Request) {
   // Rate limit check
   const now = Date.now();
   if (now - lastRequestTime < 2000) {
-    return NextResponse.json(
-      { error: "יש להמתין 2 שניות בין בקשות" },
-      { status: 429 },
-    );
+    return jsonResponse({ error: "יש להמתין 2 שניות בין בקשות" }, 429);
   }
   lastRequestTime = now;
 
@@ -28,19 +40,13 @@ export async function POST(request: Request) {
     };
 
     if (!body.url) {
-      return NextResponse.json(
-        { error: "חסר שדה url בבקשה" },
-        { status: 400 },
-      );
+      return jsonResponse({ error: "חסר שדה url בבקשה" }, 400);
     }
 
     // וולידציה
     const validation = validateUrl(body.url);
     if (!validation.valid || !validation.platform) {
-      return NextResponse.json(
-        { error: validation.error || "כתובת לא תקינה" },
-        { status: 400 },
-      );
+      return jsonResponse({ error: validation.error || "כתובת לא תקינה" }, 400);
     }
 
     const cleanedUrl = cleanUrl(body.url);
@@ -49,10 +55,7 @@ export async function POST(request: Request) {
     const existing = await sql`SELECT id FROM posts WHERE url = ${cleanedUrl} LIMIT 1`;
 
     if (existing.length > 0) {
-      return NextResponse.json(
-        { error: "הפוסט הזה כבר נשמר בעבר" },
-        { status: 409 },
-      );
+      return jsonResponse({ error: "הפוסט הזה כבר נשמר בעבר" }, 409);
     }
 
     // שליפת תוכן
@@ -70,7 +73,6 @@ export async function POST(request: Request) {
           caption: scraped.text,
         });
 
-        // העשרת ה-scraped content עם תוצאות הניתוח
         if (videoResult.transcript && !scraped.transcript) {
           scraped.transcript = videoResult.transcript;
         }
@@ -78,7 +80,6 @@ export async function POST(request: Request) {
           scraped.frameDescription = videoResult.frameDescriptions.join("\n\n");
         }
       } catch (err) {
-        // Graceful degradation - ממשיכים בלי ניתוח וידאו
         console.error("[Video Analysis] Error (continuing without):", err);
       }
     }
@@ -86,13 +87,13 @@ export async function POST(request: Request) {
     // בדיקה שיש מספיק תוכן לנתח
     const hasContent = scraped.text || scraped.transcript || scraped.frameDescription;
     if (!hasContent && !body.manualText) {
-      return NextResponse.json(
+      return jsonResponse(
         {
           error: "לא הצלחנו לשלוף תוכן מהפוסט. יש להדביק את הטקסט ידנית",
           needsManualInput: true,
           scraped,
         },
-        { status: 422 },
+        422,
       );
     }
 
@@ -100,13 +101,14 @@ export async function POST(request: Request) {
     const analysis = await analyzeContent(scraped);
 
     // טקסט מקורי לשמירה — שילוב כל המקורות
-    const originalText = [
-      scraped.text,
-      scraped.transcript ? `[תמלול] ${scraped.transcript}` : null,
-      scraped.frameDescription ? `[ויזואלי] ${scraped.frameDescription}` : null,
-    ]
-      .filter(Boolean)
-      .join("\n\n") || null;
+    const originalText =
+      [
+        scraped.text,
+        scraped.transcript ? `[תמלול] ${scraped.transcript}` : null,
+        scraped.frameDescription ? `[ויזואלי] ${scraped.frameDescription}` : null,
+      ]
+        .filter(Boolean)
+        .join("\n\n") || null;
 
     // שמירה ב-DB
     const rows = await sql`
@@ -128,10 +130,7 @@ export async function POST(request: Request) {
     const savedPost = rows[0] as Post;
 
     if (!savedPost) {
-      return NextResponse.json(
-        { error: "שגיאה בשמירת הפוסט" },
-        { status: 500 },
-      );
+      return jsonResponse({ error: "שגיאה בשמירת הפוסט" }, 500);
     }
 
     // יצירת תגיות וחיבור לפוסט
@@ -155,13 +154,13 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({
+    return jsonResponse({
       post: { ...savedPost, tags },
       analysis,
     });
   } catch (err) {
     console.error("[API /analyze]", err);
     const message = err instanceof Error ? err.message : "שגיאה לא צפויה";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonResponse({ error: message }, 500);
   }
 }

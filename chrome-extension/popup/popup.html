@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <span class="logo">📚</span>
+      <h1>PostVault</h1>
+    </div>
+    <p class="subtitle">שמור ונתח פוסטים מרשתות חברתיות</p>
+
+    <div class="stats">
+      <span class="count" id="saved-count">0</span>
+      <span class="label">פוסטים נשמרו</span>
+    </div>
+
+    <div class="settings">
+      <label for="api-url">כתובת PostVault:</label>
+      <input type="url" id="api-url" placeholder="https://post-vault-sigma.vercel.app">
+      <button id="save-settings">שמור</button>
+    </div>
+
+    <a href="" id="open-library" target="_blank" class="open-library">
+      פתח את הספרייה ←
+    </a>
+
+    <div class="instructions">
+      <p>גלול בפיד של Instagram או Facebook</p>
+      <p>לחץ על כפתור <strong>📚 PostVault</strong> בכל פוסט לשמירה</p>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

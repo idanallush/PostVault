@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "PostVault — שמור ונתח פוסטים",
+  "version": "1.0.0",
+  "description": "שמור ונתח פוסטים מאינסטגרם ופייסבוק עם AI",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": [
+    "https://www.instagram.com/*",
+    "https://www.facebook.com/*",
+    "https://post-vault-sigma.vercel.app/*",
+    "http://localhost:3000/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.instagram.com/*"],
+      "js": ["content/instagram.js"],
+      "css": ["content/styles.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.facebook.com/*"],
+      "js": ["content/facebook.js"],
+      "css": ["content/styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
