@@ -1,19 +1,23 @@
 import { notFound } from "next/navigation";
+import { sql } from "@/lib/db";
 import { PostDetail } from "@/components/PostDetail";
+import type { Post, Tag, PostWithTags } from "@/types";
 
-async function getPost(id: string) {
-  // DATABASE_URL is server-only, use it to check if DB is configured
-  if (!process.env.DATABASE_URL) return null;
-
+async function getPost(id: string): Promise<PostWithTags | null> {
   try {
-    const baseUrl = `http://localhost:${process.env.PORT || 3000}`;
-    const res = await fetch(`${baseUrl}/api/posts/${id}`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.post;
-  } catch {
+    const rows = await sql`SELECT * FROM posts WHERE id = ${id}`;
+    const post = rows[0] as Post | undefined;
+    if (!post) return null;
+
+    const tagRows = await sql`
+      SELECT t.* FROM tags t
+      JOIN posts_tags pt ON t.id = pt.tag_id
+      WHERE pt.post_id = ${id}
+    `;
+
+    return { ...post, tags: tagRows as Tag[] };
+  } catch (err) {
+    console.error("[Post Page] Error fetching post:", err);
     return null;
   }
 }
