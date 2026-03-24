@@ -3,7 +3,7 @@
   "name": "PostVault — שמור ונתח פוסטים",
   "version": "1.0.0",
   "description": "שמור ונתח פוסטים מאינסטגרם ופייסבוק עם AI",
-  "permissions": ["storage", "activeTab"],
+  "permissions": ["storage", "activeTab", "contextMenus"],
   "host_permissions": [
     "https://www.instagram.com/*",
     "https://www.facebook.com/*",

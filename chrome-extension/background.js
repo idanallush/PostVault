@@ -1,16 +1,36 @@
 // PostVault Background Service Worker
 
+// --- Context Menu ---
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({
+    id: 'save-to-postvault',
+    title: 'שמור ב-PostVault 📚',
+    contexts: ['page'],
+    documentUrlPatterns: [
+      'https://www.instagram.com/*',
+      'https://www.facebook.com/*',
+    ],
+  });
+});
+
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId === 'save-to-postvault' && tab?.id) {
+    // Ask content script to extract data and save
+    chrome.tabs.sendMessage(tab.id, { action: 'extractAndSave' });
+  }
+});
+
+// --- Message handler ---
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === 'analyzePost') {
     handleAnalyzePost(request.data)
       .then((result) => sendResponse({ success: true, data: result }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
-    return true; // keep message channel open for async response
+    return true; // keep channel open for async response
   }
 });
 
 async function handleAnalyzePost(postData) {
-  // Read API URL from storage (default: production Vercel)
   const { apiUrl } = await chrome.storage.sync.get({
     apiUrl: 'https://post-vault-sigma.vercel.app',
   });
