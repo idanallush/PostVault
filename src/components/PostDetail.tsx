@@ -7,6 +7,7 @@ import { PlatformBadge } from "./PlatformBadge";
 import { CategoryBadge, ContentTypeBadge } from "./CategoryBadge";
 import { TagSelector } from "./TagSelector";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { SmartImage } from "./SmartImage";
 import { useTags } from "@/hooks/useTags";
 import { formatHebrewDate } from "@/lib/utils";
 import type { Post, Tag, Platform } from "@/types";
@@ -108,16 +109,15 @@ export function PostDetail({ initialPost }: PostDetailProps) {
       </div>
 
       {/* Thumbnail */}
-      {post.thumbnail_url && (
-        <div className="rounded-xl overflow-hidden mb-6">
-          <img
-            src={post.thumbnail_url}
-            alt=""
-            className="w-full max-h-80 object-cover"
-            loading="lazy"
-          />
-        </div>
-      )}
+      <div className="rounded-xl overflow-hidden mb-6 aspect-video">
+        <SmartImage
+          src={post.thumbnail_url}
+          alt={post.ai_summary || ""}
+          platform={post.platform}
+          category={post.ai_category}
+          className="w-full h-full object-cover"
+        />
+      </div>
 
       {/* Summary */}
       <section className="mb-6">

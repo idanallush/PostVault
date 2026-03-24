@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { PlatformBadge } from "./PlatformBadge";
 import { CategoryBadge, ContentTypeBadge } from "./CategoryBadge";
+import { SmartImage } from "./SmartImage";
 import { formatHebrewDate } from "@/lib/utils";
 import type { PostWithTags, Platform } from "@/types";
 
@@ -23,39 +24,27 @@ export function PostCard({ post, onToggleFavorite, selectable, selected, onToggl
     <div className={`group rounded-xl bg-surface border overflow-hidden transition-all ${
       selected ? "border-accent-gold ring-1 ring-accent-gold/30" : "border-surface-border hover:border-foreground-dim/20"
     }`}>
-      {/* Thumbnail */}
-      {post.thumbnail_url && (
-        <div className="aspect-video bg-background overflow-hidden relative">
-          <img
-            src={post.thumbnail_url}
-            alt=""
-            className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
-            loading="lazy"
-          />
-          {selectable && (
-            <div className="absolute top-2 right-2">
-              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                selected ? "bg-accent-gold border-accent-gold" : "border-white/60 bg-black/30"
-              }`}>
-                {selected && <span className="text-background text-xs font-bold">{"\u2713"}</span>}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="p-4">
-        {/* Checkbox for cards without thumbnail */}
-        {selectable && !post.thumbnail_url && (
-          <div className="flex justify-end mb-2">
+      {/* Thumbnail — always shown, SmartImage handles broken/missing URLs */}
+      <div className="aspect-video bg-background overflow-hidden relative">
+        <SmartImage
+          src={post.thumbnail_url}
+          alt={post.ai_summary || ""}
+          platform={post.platform}
+          category={post.ai_category}
+          className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+        />
+        {selectable && (
+          <div className="absolute top-2 right-2">
             <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-              selected ? "bg-accent-gold border-accent-gold" : "border-border"
+              selected ? "bg-accent-gold border-accent-gold" : "border-white/60 bg-black/30"
             }`}>
               {selected && <span className="text-background text-xs font-bold">{"\u2713"}</span>}
             </div>
           </div>
         )}
+      </div>
 
+      <div className="p-4">
         {/* Header: Platform + Favorite */}
         <div className="flex items-center justify-between mb-2">
           <PlatformBadge platform={post.platform as Platform} />
