@@ -18,14 +18,14 @@ type AppState =
 export default function Home() {
   const [state, setState] = useState<AppState>({ type: "idle" });
 
-  const analyze = useCallback(async (url: string, manualText?: string) => {
+  const analyze = useCallback(async (url: string, manualText?: string, imageUrl?: string) => {
     setState({ type: "loading" });
 
     try {
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, manualText }),
+        body: JSON.stringify({ url, manualText, imageUrl }),
       });
 
       const data = await response.json();
@@ -61,9 +61,9 @@ export default function Home() {
     analyze(url);
   }, [analyze]);
 
-  const handleManualSubmit = useCallback((text: string) => {
+  const handleManualSubmit = useCallback((text: string, imageUrl?: string) => {
     if (state.type === "needsManual") {
-      analyze(state.url, text);
+      analyze(state.url, text, imageUrl);
     }
   }, [analyze, state]);
 

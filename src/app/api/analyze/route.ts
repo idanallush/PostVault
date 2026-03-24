@@ -24,6 +24,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       url?: string;
       manualText?: string;
+      imageUrl?: string;
     };
 
     if (!body.url) {
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
 
     // שליפת תוכן
     const scraped = body.manualText
-      ? createManualContent(cleanedUrl, validation.platform, body.manualText)
+      ? createManualContent(cleanedUrl, validation.platform, body.manualText, body.imageUrl)
       : await scrapeContent(cleanedUrl);
 
     // שדרוג: ניתוח וידאו אם רלוונטי
