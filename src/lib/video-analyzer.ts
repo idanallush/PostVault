@@ -1,10 +1,6 @@
-import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
+import { anthropic, CLAUDE_MODEL } from "@/lib/claude";
 import type { Platform, VideoAnalysis } from "@/types";
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
 
 /**
  * ניתוח ויזואלי של תמונה/thumbnail עם Claude Vision
@@ -42,7 +38,7 @@ export async function analyzeFrame(thumbnailUrl: string): Promise<string | null>
     console.log(`[Vision] Analyzing image (${(buffer.byteLength / 1024).toFixed(0)}KB, ${mediaType})`);
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6-20250514",
+      model: CLAUDE_MODEL,
       max_tokens: 1000,
       messages: [
         {

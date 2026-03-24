@@ -2,7 +2,10 @@ import Anthropic from "@anthropic-ai/sdk";
 import { buildAnalysisPrompt } from "@/lib/prompts/analyze";
 import type { ScrapedContent, AnalysisResult } from "@/types";
 
-const anthropic = new Anthropic({
+/** Model ID — single source of truth */
+export const CLAUDE_MODEL = "claude-sonnet-4-6" as const;
+
+export const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
@@ -29,7 +32,7 @@ export async function analyzeContent(
   });
 
   const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-6-20250514",
+    model: CLAUDE_MODEL,
     max_tokens: 1500,
     system,
     messages: [{ role: "user", content: user }],
