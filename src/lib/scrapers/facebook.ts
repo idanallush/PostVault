@@ -1,11 +1,36 @@
 import * as cheerio from "cheerio";
+import { scrapeWithApify } from "@/lib/apify";
 import type { ScrapedContent, PostType } from "@/types";
 
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 export async function scrapeFacebook(url: string): Promise<ScrapedContent> {
-  // שיטה 1: Facebook oEmbed (ציבורי)
+  // שיטה 1: Apify API (הכי אמין)
+  try {
+    const apifyResult = await scrapeWithApify(url, "facebook");
+    if (apifyResult && (apifyResult.text || apifyResult.mediaUrl)) {
+      return {
+        platform: "facebook",
+        postType: apifyResult.postType,
+        text: apifyResult.text,
+        mediaUrl: apifyResult.mediaUrl,
+        thumbnailUrl: apifyResult.thumbnailUrl,
+        authorName: apifyResult.authorName,
+        authorHandle: apifyResult.authorHandle,
+        originalUrl: url,
+        scrapedSuccessfully: true,
+        needsManualInput: false,
+        videoUrl: apifyResult.videoUrl,
+        transcript: null,
+        frameDescription: null,
+      };
+    }
+  } catch (err) {
+    console.error("[Facebook Apify]", err);
+  }
+
+  // שיטה 2: Facebook oEmbed (fallback)
   try {
     const result = await scrapeViaOEmbed(url);
     if (result) return result;
@@ -13,7 +38,7 @@ export async function scrapeFacebook(url: string): Promise<ScrapedContent> {
     console.error("[Facebook oEmbed]", err);
   }
 
-  // שיטה 2: Meta tags fallback
+  // שיטה 3: Meta tags fallback
   try {
     const result = await scrapeViaMeta(url);
     if (result) return result;
@@ -21,7 +46,7 @@ export async function scrapeFacebook(url: string): Promise<ScrapedContent> {
     console.error("[Facebook Meta]", err);
   }
 
-  // שיטה 3: Manual fallback
+  // שיטה 4: Manual fallback
   return createPartialResult(url, "לא הצלחנו לשלוף תוכן מפייסבוק. יש להדביק את הטקסט ידנית");
 }
 

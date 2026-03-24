@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import { extractInstagramShortcode } from "@/lib/parsers/url-parser";
+import { scrapeWithApify } from "@/lib/apify";
 import type { ScrapedContent, PostType } from "@/types";
 
 const USER_AGENT =
@@ -12,7 +13,31 @@ export async function scrapeInstagram(url: string): Promise<ScrapedContent> {
     return createPartialResult(url, "לא הצלחנו לזהות את מזהה הפוסט");
   }
 
-  // שיטה 1: Embed endpoint (הכי אמין)
+  // שיטה 1: Apify API (הכי אמין)
+  try {
+    const apifyResult = await scrapeWithApify(url, "instagram");
+    if (apifyResult && (apifyResult.text || apifyResult.mediaUrl)) {
+      return {
+        platform: "instagram",
+        postType: apifyResult.postType,
+        text: apifyResult.text,
+        mediaUrl: apifyResult.mediaUrl,
+        thumbnailUrl: apifyResult.thumbnailUrl,
+        authorName: apifyResult.authorName,
+        authorHandle: apifyResult.authorHandle,
+        originalUrl: url,
+        scrapedSuccessfully: true,
+        needsManualInput: false,
+        videoUrl: apifyResult.videoUrl,
+        transcript: null,
+        frameDescription: null,
+      };
+    }
+  } catch (err) {
+    console.error("[Instagram Apify]", err);
+  }
+
+  // שיטה 2: Embed endpoint (fallback)
   try {
     const result = await scrapeViaEmbed(url, shortcode);
     if (result) return result;
@@ -20,7 +45,7 @@ export async function scrapeInstagram(url: string): Promise<ScrapedContent> {
     console.error("[Instagram Embed]", err);
   }
 
-  // שיטה 2: Meta tags fallback
+  // שיטה 3: Meta tags fallback
   try {
     const result = await scrapeViaMeta(url, shortcode);
     if (result) return result;
@@ -28,7 +53,7 @@ export async function scrapeInstagram(url: string): Promise<ScrapedContent> {
     console.error("[Instagram Meta]", err);
   }
 
-  // שיטה 3: Manual fallback
+  // שיטה 4: Manual fallback
   return createPartialResult(url, "לא הצלחנו לשלוף תוכן מאינסטגרם. יש להדביק את הטקסט ידנית");
 }
 

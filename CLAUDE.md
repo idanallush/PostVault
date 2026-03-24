@@ -17,7 +17,8 @@
 - **מסד נתונים:** Neon (PostgreSQL serverless)
 - **ניתוח AI:** Claude API (Vision + Text)
 - **תמלול אודיו:** OpenAI Whisper API
-- **שליפת תוכן:** Instagram Embed, Facebook oEmbed, YouTube Transcript
+- **שליפת תוכן:** Apify API (Instagram + Facebook), YouTube Transcript, fallback to Embed/oEmbed
+- **iOS Shortcut:** `POST /api/shortcut` endpoint
 - **Deployment:** Vercel
 
 ## מבנה תיקיות
