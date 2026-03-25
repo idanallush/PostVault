@@ -16,6 +16,9 @@ export const metadata: Metadata = {
     template: "%s | PostVault",
   },
   description: "כלי חכם לשמירה, ניתוח וסיכום תוכן מאינסטגרם, פייסבוק ויוטיוב",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
