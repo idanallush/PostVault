@@ -7,40 +7,42 @@ export function Navbar() {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border backdrop-blur-md bg-background/80">
-      <div className="mx-auto max-w-4xl flex items-center justify-between px-4 py-3 sm:px-6">
-        <div className="flex items-center gap-6">
-          <Link href="/" className="text-lg font-bold text-foreground hover:text-accent-gold transition-colors">
+    <header className="sticky top-3 z-50 mx-auto max-w-3xl px-4">
+      <nav className="glass-panel flex items-center justify-between px-5 py-2.5">
+        <div className="flex items-center gap-5">
+          <Link href="/" className="text-[15px] font-semibold text-foreground tracking-tight">
             PostVault
           </Link>
-          <Link href="/library" className="text-sm text-foreground-mid hover:text-foreground transition-colors">
-            הספרייה שלי
+          <Link
+            href="/library"
+            className="text-[13px] text-foreground-mid hover:text-foreground transition-colors"
+          >
+            הספרייה
           </Link>
         </div>
-        <button
-          onClick={toggleTheme}
-          aria-label={theme === "dark" ? "מעבר למצב בהיר" : "מעבר למצב כהה"}
-          className="w-9 h-9 flex items-center justify-center rounded-lg text-foreground-mid hover:text-foreground hover:bg-surface transition-colors"
-        >
-          {theme === "dark" ? (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="5" />
-              <line x1="12" y1="1" x2="12" y2="3" />
-              <line x1="12" y1="21" x2="12" y2="23" />
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-              <line x1="1" y1="12" x2="3" y2="12" />
-              <line x1="21" y1="12" x2="23" y2="12" />
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-            </svg>
-          ) : (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-            </svg>
-          )}
-        </button>
-      </div>
-    </nav>
+
+        <div className="flex items-center gap-2">
+          <Link href="/" className="btn-primary text-[13px] px-4 py-1.5">
+            + חדש
+          </Link>
+          <button
+            onClick={toggleTheme}
+            className="icon-btn"
+            aria-label={theme === "dark" ? "מעבר למצב בהיר" : "מעבר למצב כהה"}
+          >
+            {theme === "dark" ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            )}
+          </button>
+        </div>
+      </nav>
+    </header>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import type { Platform } from "@/types";
 import type { TagWithCount } from "@/hooks/useTags";
 
 interface FilterBarProps {
@@ -18,121 +17,67 @@ interface FilterBarProps {
   onSortChange: (sort: "newest" | "oldest") => void;
 }
 
-const platforms: { value: string; label: string }[] = [
+const platforms = [
   { value: "", label: "הכל" },
   { value: "instagram", label: "Instagram" },
   { value: "facebook", label: "Facebook" },
   { value: "youtube", label: "YouTube" },
 ];
 
+function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`whitespace-nowrap px-3 py-1.5 rounded-full text-[12px] transition-all ${
+        active
+          ? "bg-white/15 text-foreground border border-white/20"
+          : "btn-ghost !py-1.5 !px-3 !text-[12px]"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function FilterBar({
-  activePlatform,
-  activeCategory,
-  activeTag,
-  favoriteOnly,
-  sort,
-  categories,
-  tags,
-  onPlatformChange,
-  onCategoryChange,
-  onTagChange,
-  onFavoriteChange,
-  onSortChange,
+  activePlatform, activeCategory, activeTag, favoriteOnly, sort,
+  categories, tags,
+  onPlatformChange, onCategoryChange, onTagChange, onFavoriteChange, onSortChange,
 }: FilterBarProps) {
   return (
-    <div className="space-y-3">
-      {/* Platform + Favorite + Sort */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+    <div className="space-y-2">
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
         {platforms.map((p) => (
-          <button
-            key={p.value}
-            onClick={() => onPlatformChange(p.value)}
-            className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              activePlatform === p.value
-                ? "bg-accent-gold text-background"
-                : "bg-surface border border-border text-foreground-mid hover:text-foreground"
-            }`}
-          >
+          <Chip key={p.value} active={activePlatform === p.value} onClick={() => onPlatformChange(p.value)}>
             {p.label}
-          </button>
+          </Chip>
         ))}
-        <div className="w-px h-5 bg-border mx-1" />
-        <button
-          onClick={() => onFavoriteChange(!favoriteOnly)}
-          className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-            favoriteOnly
-              ? "bg-accent-gold text-background"
-              : "bg-surface border border-border text-foreground-mid hover:text-foreground"
-          }`}
-        >
-          {favoriteOnly ? "מועדפים" : "מועדפים"}
-        </button>
+        <div className="w-px h-4 bg-[var(--glass-border)] mx-1" />
+        <Chip active={favoriteOnly} onClick={() => onFavoriteChange(!favoriteOnly)}>
+          {"\u2605"} מועדפים
+        </Chip>
         <div className="flex-1" />
-        <button
-          onClick={() => onSortChange(sort === "newest" ? "oldest" : "newest")}
-          className="whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium bg-surface border border-border text-foreground-mid hover:text-foreground transition-colors"
-        >
-          {sort === "newest" ? "חדש \u2190 ישן" : "ישן \u2190 חדש"}
-        </button>
+        <Chip active={false} onClick={() => onSortChange(sort === "newest" ? "oldest" : "newest")}>
+          {sort === "newest" ? "\u2193 חדש" : "\u2191 ישן"}
+        </Chip>
       </div>
 
-      {/* Categories */}
       {categories.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-          <span className="text-xs text-foreground-dim whitespace-nowrap">קטגוריה:</span>
-          <button
-            onClick={() => onCategoryChange("")}
-            className={`whitespace-nowrap px-2.5 py-1 rounded-md text-xs transition-colors ${
-              !activeCategory
-                ? "bg-accent-gold/20 text-accent-gold"
-                : "text-foreground-dim hover:text-foreground"
-            }`}
-          >
-            הכל
-          </button>
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
           {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => onCategoryChange(activeCategory === cat ? "" : cat)}
-              className={`whitespace-nowrap px-2.5 py-1 rounded-md text-xs transition-colors ${
-                activeCategory === cat
-                  ? "bg-accent-gold/20 text-accent-gold"
-                  : "text-foreground-dim hover:text-foreground"
-              }`}
-            >
+            <Chip key={cat} active={activeCategory === cat} onClick={() => onCategoryChange(activeCategory === cat ? "" : cat)}>
               {cat}
-            </button>
+            </Chip>
           ))}
         </div>
       )}
 
-      {/* Tags */}
       {tags.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-          <span className="text-xs text-foreground-dim whitespace-nowrap">תגית:</span>
-          <button
-            onClick={() => onTagChange("")}
-            className={`whitespace-nowrap px-2.5 py-1 rounded-md text-xs transition-colors ${
-              !activeTag
-                ? "bg-accent-purple/20 text-accent-purple"
-                : "text-foreground-dim hover:text-foreground"
-            }`}
-          >
-            הכל
-          </button>
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
           {tags.map((tag) => (
-            <button
-              key={tag.id}
-              onClick={() => onTagChange(activeTag === tag.id ? "" : tag.id)}
-              className={`whitespace-nowrap px-2.5 py-1 rounded-md text-xs transition-colors ${
-                activeTag === tag.id
-                  ? "bg-accent-purple/20 text-accent-purple"
-                  : "text-foreground-dim hover:text-foreground"
-              }`}
-            >
+            <Chip key={tag.id} active={activeTag === tag.id} onClick={() => onTagChange(activeTag === tag.id ? "" : tag.id)}>
               {tag.name}
-              <span className="text-foreground-dim ms-1">({tag.postCount})</span>
-            </button>
+            </Chip>
           ))}
         </div>
       )}

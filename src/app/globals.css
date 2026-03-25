@@ -1,47 +1,73 @@
 @import "tailwindcss";
 
-/* Dark theme (default) */
+/* === Glass Design System === */
 :root {
-  --background: #0c0f14;
-  --surface: #151921;
-  --surface-border: rgba(255, 255, 255, 0.04);
-  --foreground: #e8e4dd;
-  --foreground-mid: #a8a49d;
-  --foreground-dim: #7a7872;
+  /* Glass panels */
+  --glass-bg: rgba(20, 25, 35, 0.75);
+  --glass-bg-hover: rgba(20, 25, 35, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-hover: rgba(255, 255, 255, 0.15);
+  --glass-blur: blur(20px);
+
+  /* Core palette */
+  --background: #0a0e17;
+  --surface: rgba(20, 25, 35, 0.75);
+  --surface-border: rgba(255, 255, 255, 0.08);
+  --foreground: rgba(255, 255, 255, 0.9);
+  --foreground-mid: rgba(255, 255, 255, 0.55);
+  --foreground-dim: rgba(255, 255, 255, 0.35);
+
+  /* Accents */
   --accent-gold: #c9a96e;
   --accent-green: #34d399;
-  --accent-blue: #60a5fa;
+  --accent-blue: #2563eb;
+  --accent-blue-hover: #1d4ed8;
   --accent-purple: #a78bfa;
   --accent-orange: #fb923c;
+
+  /* Semantic */
   --positive: #34d399;
   --positive-bg: rgba(52, 211, 153, 0.1);
   --negative: #ef4444;
   --negative-bg: rgba(239, 68, 68, 0.1);
   --border: rgba(255, 255, 255, 0.08);
-  --input-border: rgba(255, 255, 255, 0.12);
-  --ring: #c9a96e;
+  --input-border: rgba(255, 255, 255, 0.1);
+  --ring: #2563eb;
+
+  /* Radius */
+  --radius-panel: 16px;
+  --radius-card: 12px;
+  --radius-button: 9999px;
 }
 
 /* Light theme */
 .light {
-  --background: #f7f7f5;
-  --surface: #ffffff;
-  --surface-border: #e5e5e0;
-  --foreground: #1a1a1a;
-  --foreground-mid: #555550;
-  --foreground-dim: #8a877f;
-  --accent-gold: #d97706;
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-bg-hover: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border-hover: rgba(0, 0, 0, 0.15);
+
+  --background: #f0f0ee;
+  --surface: rgba(255, 255, 255, 0.75);
+  --surface-border: rgba(0, 0, 0, 0.08);
+  --foreground: rgba(0, 0, 0, 0.85);
+  --foreground-mid: rgba(0, 0, 0, 0.55);
+  --foreground-dim: rgba(0, 0, 0, 0.35);
+
+  --accent-gold: #b8860b;
   --accent-green: #1a7a4c;
-  --accent-blue: #2563a0;
+  --accent-blue: #2563eb;
+  --accent-blue-hover: #1d4ed8;
   --accent-purple: #6d4c9e;
   --accent-orange: #ea580c;
+
   --positive: #1a7a4c;
   --positive-bg: #e8f5ee;
   --negative: #c0392b;
   --negative-bg: #fceaea;
-  --border: #e5e5e0;
-  --input-border: #d1d5db;
-  --ring: #d97706;
+  --border: rgba(0, 0, 0, 0.08);
+  --input-border: rgba(0, 0, 0, 0.12);
+  --ring: #2563eb;
 }
 
 @theme inline {
@@ -68,19 +94,126 @@
 
 body {
   font-family: var(--font-sans);
+  background: linear-gradient(135deg, #0a0e17 0%, #131820 50%, #0d1117 100%);
+  min-height: 100vh;
+}
+
+.light body,
+body:has(.light) {
+  background: linear-gradient(135deg, #f0f0ee 0%, #e8e8e4 50%, #f0f0ee 100%);
+}
+
+/* Glass utility classes */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-panel);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-card);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.light .glass-card {
+  background: rgba(0, 0, 0, 0.03);
+}
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--glass-border-hover);
+}
+.light .glass-card:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-card);
+  color: var(--foreground);
+  transition: border-color 0.2s ease;
+}
+.light .glass-input {
+  background: rgba(0, 0, 0, 0.04);
+}
+.glass-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.btn-primary {
+  background: var(--accent-blue);
+  color: white;
+  border-radius: var(--radius-button);
+  font-weight: 500;
+  padding: 10px 24px;
+  transition: background 0.2s ease;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+}
+.btn-primary:hover { background: var(--accent-blue-hover); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-button);
+  color: var(--foreground);
+  padding: 8px 16px;
+  font-size: 13px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.light .btn-ghost {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.light .btn-ghost:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.icon-btn {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--foreground-mid);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--foreground);
+}
+.light .icon-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
 }
 
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
+.animate-in { animation: fadeInUp 0.3s ease-out; }
 
-.animate-in {
-  animation: fadeInUp 0.3s ease-out;
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 0.04; }
+  50% { opacity: 0.08; }
+}
+.skeleton-pulse {
+  animation: pulse-subtle 1.5s ease-in-out infinite;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+}
+.light .skeleton-pulse {
+  background: rgba(0, 0, 0, 0.06);
 }

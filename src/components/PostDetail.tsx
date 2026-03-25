@@ -3,14 +3,11 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { PlatformBadge } from "./PlatformBadge";
-import { CategoryBadge, ContentTypeBadge } from "./CategoryBadge";
 import { TagSelector } from "./TagSelector";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { SmartImage } from "./SmartImage";
 import { useTags } from "@/hooks/useTags";
 import { formatHebrewDate } from "@/lib/utils";
-import type { Post, Tag, Platform } from "@/types";
+import type { Post, Tag } from "@/types";
 
 interface PostDetailProps {
   initialPost: Post & { tags: Tag[] };
@@ -31,7 +28,6 @@ export function PostDetail({ initialPost }: PostDetailProps) {
   const handleToggleFavorite = useCallback(async () => {
     const newFav = !post.is_favorite;
     setPost((p) => ({ ...p, is_favorite: newFav }));
-
     await fetch(`/api/posts/${post.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -60,79 +56,57 @@ export function PostDetail({ initialPost }: PostDetailProps) {
     const ok = await addTagToPost(post.id, tagId);
     if (ok) {
       const tag = allTags.find((t) => t.id === tagId);
-      if (tag) {
-        setPost((p) => ({ ...p, tags: [...p.tags, tag] }));
-      }
+      if (tag) setPost((p) => ({ ...p, tags: [...p.tags, tag] }));
     }
   }, [post.id, addTagToPost, allTags]);
 
   const handleRemoveTag = useCallback(async (tagId: string) => {
     const ok = await removeTagFromPost(post.id, tagId);
-    if (ok) {
-      setPost((p) => ({ ...p, tags: p.tags.filter((t) => t.id !== tagId) }));
-    }
+    if (ok) setPost((p) => ({ ...p, tags: p.tags.filter((t) => t.id !== tagId) }));
   }, [post.id, removeTagFromPost]);
 
   const handleCreateTag = useCallback(async (name: string) => {
     const ok = await createTag(name);
-    if (ok) {
-      await refetchTags();
-    }
+    if (ok) await refetchTags();
   }, [createTag, refetchTags]);
 
   return (
-    <div className="mx-auto max-w-2xl px-4 sm:px-6 py-6">
-      {/* Back link */}
-      <Link
-        href="/library"
-        className="inline-flex items-center gap-1 text-sm text-foreground-mid hover:text-foreground transition-colors mb-6"
-      >
-{"\u2190 חזרה לספרייה"}
-      </Link>
-
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+    <div className="animate-in">
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-6">
+        <Link href="/library" className="text-[13px] text-foreground-dim hover:text-foreground transition-colors">
+          {"\u2190 חזרה"}
+        </Link>
         <div className="flex items-center gap-2">
-          <PlatformBadge platform={post.platform as Platform} />
-          <CategoryBadge category={post.ai_category} />
-          {post.ai_content_type && <ContentTypeBadge contentType={post.ai_content_type} />}
+          <button
+            onClick={handleToggleFavorite}
+            className="icon-btn"
+            aria-label={post.is_favorite ? "הסר ממועדפים" : "הוסף למועדפים"}
+          >
+            <span className={post.is_favorite ? "text-accent-gold" : ""}>{post.is_favorite ? "\u2605" : "\u2606"}</span>
+          </button>
+          <a href={post.url} target="_blank" rel="noopener noreferrer" className="icon-btn" aria-label="פתח מקור">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
         </div>
-        <button
-          onClick={handleToggleFavorite}
-          className={`text-xl transition-colors ${
-            post.is_favorite ? "text-accent-gold" : "text-foreground-dim hover:text-accent-gold"
-          }`}
-          aria-label={post.is_favorite ? "הסר ממועדפים" : "הוסף למועדפים"}
-        >
-          {post.is_favorite ? "\u2605" : "\u2606"}
-        </button>
       </div>
 
-      {/* Thumbnail */}
-      <div className="rounded-xl overflow-hidden mb-6 aspect-video">
-        <SmartImage
-          src={post.thumbnail_url}
-          alt={post.ai_summary || ""}
-          platform={post.platform}
-          category={post.ai_category}
-          className="w-full h-full object-cover"
-        />
+      {/* Title */}
+      <div className="mb-6">
+        <span className="text-[11px] uppercase tracking-wider text-foreground-dim block mb-1">סיכום</span>
+        <p className="text-[16px] font-semibold text-foreground leading-relaxed">{post.ai_summary}</p>
       </div>
 
-      {/* Summary */}
-      <section className="mb-6">
-        <h2 className="text-xs font-medium text-foreground-dim mb-2">סיכום</h2>
-        <p className="text-foreground leading-relaxed">{post.ai_summary}</p>
-      </section>
+      <hr className="border-[var(--glass-border)] mb-6" />
 
       {/* Key Points */}
       {post.ai_key_points.length > 0 && (
         <section className="mb-6">
-          <h2 className="text-xs font-medium text-foreground-dim mb-2">נקודות מפתח</h2>
+          <span className="text-[11px] uppercase tracking-wider text-foreground-dim block mb-2">נקודות מפתח</span>
           <ul className="space-y-1.5">
             {post.ai_key_points.map((point, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                <span className="text-accent-gold mt-0.5">{"\u2022"}</span>
+              <li key={i} className="flex items-start gap-2 text-[14px] text-foreground leading-relaxed">
+                <span className="text-foreground-dim mt-1 text-[8px]">{"\u25CF"}</span>
                 <span>{point}</span>
               </li>
             ))}
@@ -143,11 +117,11 @@ export function PostDetail({ initialPost }: PostDetailProps) {
       {/* Action Items */}
       {post.ai_action_items.length > 0 && (
         <section className="mb-6">
-          <h2 className="text-xs font-medium text-foreground-dim mb-2">צעדים לביצוע</h2>
+          <span className="text-[11px] uppercase tracking-wider text-foreground-dim block mb-2">צעדים לביצוע</span>
           <ol className="space-y-1.5">
             {post.ai_action_items.map((item, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                <span className="text-accent-gold font-medium min-w-[1.2rem]">{i + 1}.</span>
+              <li key={i} className="flex items-start gap-2 text-[14px] text-foreground leading-relaxed">
+                <span className="text-foreground-dim font-medium min-w-[1.2rem]">{i + 1}.</span>
                 <span>{item}</span>
               </li>
             ))}
@@ -157,28 +131,16 @@ export function PostDetail({ initialPost }: PostDetailProps) {
 
       {/* Tags */}
       <section className="mb-6">
-        <h2 className="text-xs font-medium text-foreground-dim mb-2">תגיות</h2>
+        <span className="text-[11px] uppercase tracking-wider text-foreground-dim block mb-2">תגיות</span>
         <div className="flex flex-wrap items-center gap-1.5 mb-2">
           {post.tags.map((tag) => (
-            <span
-              key={tag.id}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs bg-accent-gold/10 text-accent-gold"
-            >
+            <span key={tag.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] bg-white/6 text-foreground-mid border border-[var(--glass-border)]">
               {tag.name}
-              <button
-                onClick={() => handleRemoveTag(tag.id)}
-                className="hover:text-negative transition-colors"
-                aria-label={`הסר תגית ${tag.name}`}
-              >
-                {"\u00D7"}
-              </button>
+              <button onClick={() => handleRemoveTag(tag.id)} className="hover:text-negative transition-colors text-foreground-dim">{"\u00D7"}</button>
             </span>
           ))}
-          <button
-            onClick={() => setShowTagSelector(!showTagSelector)}
-            className="px-2.5 py-1 rounded-md text-xs border border-border text-foreground-dim hover:text-foreground transition-colors"
-          >
-            + הוסף תגית
+          <button onClick={() => setShowTagSelector(!showTagSelector)} className="btn-ghost text-[12px] px-2.5 py-1">
+            + תגית
           </button>
         </div>
         {showTagSelector && (
@@ -195,46 +157,44 @@ export function PostDetail({ initialPost }: PostDetailProps) {
 
       {/* Personal Note */}
       <section className="mb-6">
-        <h2 className="text-xs font-medium text-foreground-dim mb-2">הערה אישית</h2>
+        <span className="text-[11px] uppercase tracking-wider text-foreground-dim block mb-2">הערה אישית</span>
         <textarea
           value={note}
-          onChange={(e) => {
-            setNote(e.target.value);
-            setNoteChanged(true);
-          }}
-          placeholder="הוסף הערה אישית..."
+          onChange={(e) => { setNote(e.target.value); setNoteChanged(true); }}
+          placeholder="הוסף הערה..."
           rows={3}
-          className="w-full rounded-lg bg-surface border border-input-border px-4 py-3 text-sm text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-ring transition-colors resize-none"
+          className="glass-input w-full px-4 py-3 text-[14px] resize-none"
         />
         <div className="flex items-center gap-2 mt-2">
           {noteChanged && (
-            <button
-              onClick={handleSaveNote}
-              className="rounded-lg bg-accent-gold px-4 py-2 text-xs font-medium text-background hover:opacity-90 transition-opacity"
-            >
-              שמור
-            </button>
+            <button onClick={handleSaveNote} className="btn-primary text-[13px] px-4 py-1.5">שמור</button>
           )}
-          {noteSaved && (
-            <span className="text-accent-green text-xs">נשמר</span>
-          )}
+          {noteSaved && <span className="text-accent-green text-[12px]">נשמר</span>}
         </div>
       </section>
 
+      {/* Original Text */}
+      <section className="mb-6">
+        <button
+          onClick={() => setShowOriginal(!showOriginal)}
+          className="text-[13px] text-foreground-dim hover:text-foreground transition-colors"
+        >
+          {showOriginal ? "הסתר טקסט מקורי \u25BE" : "הצג טקסט מקורי \u25B8"}
+        </button>
+        {showOriginal && (
+          <div className="mt-3 glass-card p-4 text-[13px] text-foreground-mid leading-relaxed">
+            {post.original_text || "הטקסט המקורי לא זמין"}
+          </div>
+        )}
+      </section>
+
       {/* Details */}
-      <section className="mb-6 rounded-xl bg-surface border border-surface-border p-4">
-        <h2 className="text-xs font-medium text-foreground-dim mb-3">פרטים</h2>
-        <div className="space-y-2 text-sm">
+      <section className="mb-6 glass-card p-4">
+        <span className="text-[11px] uppercase tracking-wider text-foreground-dim block mb-3">פרטים</span>
+        <div className="space-y-2 text-[13px]">
           <div className="flex justify-between">
-            <span className="text-foreground-dim">מקור</span>
-            <a
-              href={post.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent-gold hover:underline truncate max-w-[60%]"
-            >
-              {post.url}
-            </a>
+            <span className="text-foreground-dim">פלטפורמה</span>
+            <span className="text-foreground">{post.platform}</span>
           </div>
           {post.author_name && (
             <div className="flex justify-between">
@@ -249,41 +209,16 @@ export function PostDetail({ initialPost }: PostDetailProps) {
         </div>
       </section>
 
-      {/* Original Text (Collapsible) */}
-      <section className="mb-6">
-        <button
-          onClick={() => setShowOriginal(!showOriginal)}
-          className="text-sm text-foreground-mid hover:text-foreground transition-colors"
-        >
-          {showOriginal ? "הסתר טקסט מקורי \u25BE" : "הצג טקסט מקורי \u25B8"}
-        </button>
-        {showOriginal && (
-          <div className="mt-3 rounded-lg bg-surface border border-surface-border p-4 text-sm text-foreground-mid leading-relaxed animate-in">
-            {post.original_text || "הטקסט המקורי לא זמין"}
-          </div>
-        )}
-      </section>
-
-      {/* Actions */}
-      <div className="flex items-center gap-2 pt-4 border-t border-border">
-        <a
-          href={post.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center px-3.5 py-2 rounded-lg border border-border text-sm text-foreground-mid hover:text-foreground transition-colors"
-        >
-          פתח מקור
-        </a>
-        <div className="flex-1" />
+      {/* Delete */}
+      <div className="pt-4 border-t border-[var(--glass-border)]">
         <button
           onClick={() => setShowDeleteConfirm(true)}
-          className="inline-flex items-center px-3.5 py-2 rounded-lg text-sm text-negative hover:bg-negative-bg transition-colors"
+          className="text-[13px] text-negative hover:underline"
         >
           מחק פוסט
         </button>
       </div>
 
-      {/* Delete Confirm */}
       {showDeleteConfirm && (
         <ConfirmDialog
           title="מחיקת פוסט"

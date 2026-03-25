@@ -2,13 +2,18 @@
 
 import { useState, useCallback } from "react";
 import { detectPlatform } from "@/lib/parsers/url-parser";
-import { PlatformBadge } from "./PlatformBadge";
 import type { Platform } from "@/types";
 
 interface LinkInputProps {
   onSubmit: (url: string) => void;
   isLoading: boolean;
 }
+
+const PLATFORM_LABELS: Record<Platform, string> = {
+  instagram: "Instagram",
+  facebook: "Facebook",
+  youtube: "YouTube",
+};
 
 export function LinkInput({ onSubmit, isLoading }: LinkInputProps) {
   const [url, setUrl] = useState("");
@@ -18,27 +23,13 @@ export function LinkInput({ onSubmit, isLoading }: LinkInputProps) {
   const handleChange = useCallback((value: string) => {
     setUrl(value);
     setError(null);
-    if (value.trim().length > 5) {
-      const platform = detectPlatform(value);
-      setDetectedPlatform(platform);
-    } else {
-      setDetectedPlatform(null);
-    }
+    setDetectedPlatform(value.trim().length > 5 ? detectPlatform(value) : null);
   }, []);
 
   const handleSubmit = useCallback(() => {
     const trimmed = url.trim();
-    if (!trimmed) {
-      setError("יש להזין כתובת");
-      return;
-    }
-
-    const platform = detectPlatform(trimmed);
-    if (!platform) {
-      setError("הפלטפורמה לא נתמכת. נתמכים: Instagram, Facebook, YouTube");
-      return;
-    }
-
+    if (!trimmed) { setError("יש להזין כתובת"); return; }
+    if (!detectPlatform(trimmed)) { setError("נתמכים: Instagram, Facebook, YouTube"); return; }
     setError(null);
     onSubmit(trimmed);
   }, [url, onSubmit]);
@@ -52,30 +43,30 @@ export function LinkInput({ onSubmit, isLoading }: LinkInputProps) {
             value={url}
             onChange={(e) => handleChange(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !isLoading && handleSubmit()}
-            placeholder="הדבק כאן לינק לפוסט..."
+            placeholder="הדבק לינק לפוסט..."
             disabled={isLoading}
             dir="ltr"
-            className="w-full rounded-xl bg-surface border border-input-border px-4 py-3.5 text-sm text-foreground text-right placeholder:text-foreground-dim focus:outline-none focus:border-ring transition-colors disabled:opacity-50"
+            className="glass-input w-full px-4 py-3 text-[14px] text-right placeholder:text-foreground-dim disabled:opacity-50"
             aria-label="כתובת הפוסט"
           />
           {detectedPlatform && (
             <div className="absolute start-3 top-1/2 -translate-y-1/2">
-              <PlatformBadge platform={detectedPlatform} />
+              <span className="text-[11px] text-foreground-dim bg-white/5 px-2 py-0.5 rounded-full">
+                {PLATFORM_LABELS[detectedPlatform]}
+              </span>
             </div>
           )}
         </div>
         <button
           onClick={handleSubmit}
           disabled={isLoading || !url.trim()}
-          className="rounded-xl bg-accent-gold px-6 py-3.5 text-sm font-medium text-background hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+          className="btn-primary whitespace-nowrap"
           aria-label="נתח פוסט"
         >
           {isLoading ? "מנתח..." : "נתח"}
         </button>
       </div>
-      {error && (
-        <p className="mt-2 text-sm text-negative">{error}</p>
-      )}
+      {error && <p className="mt-2 text-[13px] text-negative">{error}</p>}
     </div>
   );
 }
