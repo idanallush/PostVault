@@ -11,9 +11,15 @@ import type { Post, Tag } from "@/types";
 
 interface PostDetailProps {
   initialPost: Post & { tags: Tag[] };
+  /** true when rendered inside split-view panel (no navigation) */
+  embedded?: boolean;
+  /** Close the detail panel (split-view only) */
+  onClose?: () => void;
+  /** Called after post is deleted (split-view only) */
+  onDelete?: () => void;
 }
 
-export function PostDetail({ initialPost }: PostDetailProps) {
+export function PostDetail({ initialPost, embedded, onClose, onDelete }: PostDetailProps) {
   const router = useRouter();
   const { tags: allTags, addTagToPost, removeTagFromPost, createTag, refetch: refetchTags } = useTags();
 
@@ -49,8 +55,12 @@ export function PostDetail({ initialPost }: PostDetailProps) {
 
   const handleDelete = useCallback(async () => {
     await fetch(`/api/posts/${post.id}`, { method: "DELETE" });
-    router.push("/library");
-  }, [post.id, router]);
+    if (embedded && onDelete) {
+      onDelete();
+    } else {
+      router.push("/library");
+    }
+  }, [post.id, router, embedded, onDelete]);
 
   const handleAddTag = useCallback(async (tagId: string) => {
     const ok = await addTagToPost(post.id, tagId);
@@ -76,14 +86,23 @@ export function PostDetail({ initialPost }: PostDetailProps) {
 
   return (
     <div className="animate-in">
-      {/* Header: back + actions */}
+      {/* Header: back/close + actions */}
       <div className="flex items-center justify-between mb-8">
-        <Link
-          href="/library"
-          className="inline-flex items-center gap-1 text-[13px] text-foreground-dim hover:text-foreground transition-colors"
-        >
-          {"\u2190"} חזרה לספרייה
-        </Link>
+        {embedded ? (
+          <button
+            onClick={onClose}
+            className="inline-flex items-center gap-1 text-[13px] text-foreground-dim hover:text-foreground transition-colors"
+          >
+            {"\u00D7"} סגור
+          </button>
+        ) : (
+          <Link
+            href="/library"
+            className="inline-flex items-center gap-1 text-[13px] text-foreground-dim hover:text-foreground transition-colors"
+          >
+            {"\u2190"} חזרה לספרייה
+          </Link>
+        )}
         <div className="flex items-center gap-1">
           <button
             onClick={handleToggleFavorite}

@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { usePosts } from "@/hooks/usePosts";
 import { useTags } from "@/hooks/useTags";
 import { SearchBar } from "@/components/SearchBar";
@@ -10,6 +11,7 @@ import { PostCard, PostCardSkeleton } from "@/components/PostCard";
 import { PostDetail } from "@/components/PostDetail";
 import { SelectionBar } from "@/components/SelectionBar";
 import type { PostWithTags } from "@/types";
+import type { Post, Tag } from "@/types";
 
 export default function LibraryPage() {
   const {
@@ -17,17 +19,62 @@ export default function LibraryPage() {
     toggleFavorite, nextPage, prevPage, refetch,
   } = usePosts();
   const { tags } = useTags();
+  const router = useRouter();
 
   // Selection mode
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // Split view — selected post for detail panel
+  // Split view — fetched post for detail panel
   const [activePostId, setActivePostId] = useState<string | null>(null);
-  const activePost = useMemo(
-    () => posts.find((p) => p.id === activePostId) || null,
-    [posts, activePostId],
-  );
+  const [activePost, setActivePost] = useState<(Post & { tags: Tag[] }) | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  // Detect desktop vs mobile
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const check = () => setIsDesktop(window.innerWidth >= 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // Fetch full post data when selected
+  const fetchPostDetail = useCallback(async (postId: string) => {
+    setDetailLoading(true);
+    try {
+      const res = await fetch(`/api/posts/${postId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setActivePost(data.post);
+      }
+    } catch (err) {
+      console.error("Failed to fetch post:", err);
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
+  const handlePostClick = useCallback((postId: string) => {
+    if (selectionMode) return;
+    if (isDesktop) {
+      setActivePostId(postId);
+      fetchPostDetail(postId);
+    } else {
+      router.push(`/post/${postId}`);
+    }
+  }, [selectionMode, isDesktop, fetchPostDetail, router]);
+
+  const handleCloseDetail = useCallback(() => {
+    setActivePostId(null);
+    setActivePost(null);
+  }, []);
+
+  const handleDeleteFromDetail = useCallback(() => {
+    setActivePostId(null);
+    setActivePost(null);
+    refetch();
+  }, [refetch]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -131,7 +178,11 @@ export default function LibraryPage() {
           <div className="w-80 flex-shrink-0 space-y-2 hidden md:block">
             {Array.from({ length: 6 }).map((_, i) => <PostCardSkeleton key={i} />)}
           </div>
-          <div className="flex-1 glass-panel p-8">
+          {/* Mobile skeletons */}
+          <div className="w-full space-y-2 md:hidden">
+            {Array.from({ length: 4 }).map((_, i) => <PostCardSkeleton key={i} />)}
+          </div>
+          <div className="flex-1 glass-panel p-8 hidden md:block">
             <div className="skeleton-pulse h-6 w-48 mb-4" />
             <div className="skeleton-pulse h-4 w-full mb-2" />
             <div className="skeleton-pulse h-4 w-3/4" />
@@ -154,47 +205,77 @@ export default function LibraryPage() {
         </div>
       )}
 
-      {/* Split view: Sidebar + Detail */}
+      {/* Content: Split view on desktop, list on mobile */}
       {!loading && posts.length > 0 && (
         <div className="flex gap-4">
-          {/* Sidebar — post list */}
-          <div className="w-full md:w-80 flex-shrink-0 space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
+          {/* Sidebar — desktop */}
+          <div className="hidden md:block w-80 flex-shrink-0 space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
             {posts.map((post) => (
-              <div key={post.id} onClick={() => !selectionMode && setActivePostId(post.id)}>
-                <PostCard
-                  post={post}
-                  onToggleFavorite={toggleFavorite}
-                  selectable={selectionMode}
-                  selected={selectedIds.has(post.id)}
-                  onToggleSelect={toggleSelect}
-                  active={post.id === activePostId}
-                />
-              </div>
+              <PostCard
+                key={post.id}
+                post={post}
+                onToggleFavorite={toggleFavorite}
+                selectable={selectionMode}
+                selected={selectedIds.has(post.id)}
+                onToggleSelect={toggleSelect}
+                active={post.id === activePostId}
+                onClick={!selectionMode ? handlePostClick : undefined}
+              />
             ))}
-
-            {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-3 pt-4">
-                <button onClick={prevPage} disabled={page <= 1} className="btn-ghost text-[12px] disabled:opacity-30">
-                  הקודם
-                </button>
+                <button onClick={prevPage} disabled={page <= 1} className="btn-ghost text-[12px] disabled:opacity-30">הקודם</button>
                 <span className="text-[12px] text-foreground-dim">{page} / {totalPages}</span>
-                <button onClick={nextPage} disabled={page >= totalPages} className="btn-ghost text-[12px] disabled:opacity-30">
-                  הבא
-                </button>
+                <button onClick={nextPage} disabled={page >= totalPages} className="btn-ghost text-[12px] disabled:opacity-30">הבא</button>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile list — uses Link for navigation */}
+          <div className="md:hidden w-full space-y-2">
+            {posts.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                onToggleFavorite={toggleFavorite}
+                selectable={selectionMode}
+                selected={selectedIds.has(post.id)}
+                onToggleSelect={toggleSelect}
+              />
+            ))}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-3 pt-4">
+                <button onClick={prevPage} disabled={page <= 1} className="btn-ghost text-[12px] disabled:opacity-30">הקודם</button>
+                <span className="text-[12px] text-foreground-dim">{page} / {totalPages}</span>
+                <button onClick={nextPage} disabled={page >= totalPages} className="btn-ghost text-[12px] disabled:opacity-30">הבא</button>
               </div>
             )}
           </div>
 
           {/* Detail panel — desktop only */}
-          <div className="hidden md:block flex-1">
-            {activePost ? (
-              <div className="glass-panel p-6 sticky top-20">
-                <PostDetail initialPost={activePost as PostWithTags & { tags: never[] }} />
-              </div>
-            ) : (
-              <div className="glass-panel p-12 text-center sticky top-20">
+          <div className="hidden md:block flex-1 min-h-[400px]">
+            {!activePostId && (
+              <div className="glass-panel p-12 text-center h-full flex items-center justify-center sticky top-20">
                 <p className="text-foreground-dim text-[14px]">בחר פוסט מהרשימה</p>
+              </div>
+            )}
+            {activePostId && detailLoading && (
+              <div className="glass-panel p-8 sticky top-20">
+                <div className="skeleton-pulse h-5 w-48 mb-4" />
+                <div className="skeleton-pulse h-4 w-full mb-2" />
+                <div className="skeleton-pulse h-4 w-3/4 mb-6" />
+                <div className="skeleton-pulse h-3 w-full mb-2" />
+                <div className="skeleton-pulse h-3 w-5/6" />
+              </div>
+            )}
+            {activePostId && activePost && !detailLoading && (
+              <div className="glass-panel p-6 md:p-8 sticky top-20 max-h-[calc(100vh-120px)] overflow-y-auto">
+                <PostDetail
+                  initialPost={activePost}
+                  embedded
+                  onClose={handleCloseDetail}
+                  onDelete={handleDeleteFromDetail}
+                />
               </div>
             )}
           </div>

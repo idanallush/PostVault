@@ -11,9 +11,11 @@ interface PostCardProps {
   selected?: boolean;
   onToggleSelect?: (id: string) => void;
   active?: boolean;
+  /** When provided, clicking calls this instead of navigating via Link */
+  onClick?: (id: string) => void;
 }
 
-export function PostCard({ post, onToggleFavorite, selectable, selected, onToggleSelect, active }: PostCardProps) {
+export function PostCard({ post, onToggleFavorite, selectable, selected, onToggleSelect, active, onClick }: PostCardProps) {
   const cardContent = (
     <div className={`glass-card p-4 cursor-pointer ${
       active ? "!border-accent-blue !bg-[rgba(255,255,255,0.08)]" : ""
@@ -50,6 +52,13 @@ export function PostCard({ post, onToggleFavorite, selectable, selected, onToggl
   if (selectable) {
     return <div onClick={() => onToggleSelect?.(post.id)}>{cardContent}</div>;
   }
+
+  // If onClick handler provided (desktop split view), use div instead of Link
+  if (onClick) {
+    return <div onClick={() => onClick(post.id)}>{cardContent}</div>;
+  }
+
+  // Default: navigate to post page (mobile)
   return <Link href={`/post/${post.id}`} className="block">{cardContent}</Link>;
 }
 
