@@ -70,76 +70,125 @@ export function PostDetail({ initialPost }: PostDetailProps) {
     if (ok) await refetchTags();
   }, [createTag, refetchTags]);
 
+  const Divider = () => (
+    <hr className="border-t border-[rgba(255,255,255,0.06)] my-6" />
+  );
+
   return (
     <div className="animate-in">
-      {/* Header row */}
-      <div className="flex items-center justify-between mb-6">
-        <Link href="/library" className="text-[13px] text-foreground-dim hover:text-foreground transition-colors">
-          {"\u2190 חזרה"}
+      {/* Header: back + actions */}
+      <div className="flex items-center justify-between mb-8">
+        <Link
+          href="/library"
+          className="inline-flex items-center gap-1 text-[13px] text-foreground-dim hover:text-foreground transition-colors"
+        >
+          {"\u2190"} חזרה לספרייה
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
             onClick={handleToggleFavorite}
             className="icon-btn"
             aria-label={post.is_favorite ? "הסר ממועדפים" : "הוסף למועדפים"}
           >
-            <span className={post.is_favorite ? "text-accent-gold" : ""}>{post.is_favorite ? "\u2605" : "\u2606"}</span>
+            <span className={`text-[16px] ${post.is_favorite ? "text-accent-gold" : ""}`}>
+              {post.is_favorite ? "\u2605" : "\u2606"}
+            </span>
           </button>
-          <a href={post.url} target="_blank" rel="noopener noreferrer" className="icon-btn" aria-label="פתח מקור">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          <a
+            href={post.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="icon-btn"
+            aria-label="פתח מקור"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
           </a>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="icon-btn hover:!text-negative"
+            aria-label="מחק פוסט"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+          </button>
         </div>
       </div>
 
-      {/* Title */}
-      <div className="mb-6">
-        <span className="text-[11px] uppercase tracking-wider text-foreground-dim block mb-1">סיכום</span>
-        <p className="text-[16px] font-semibold text-foreground leading-relaxed">{post.ai_summary}</p>
-      </div>
+      {/* Summary */}
+      <section>
+        <span className="text-[11px] uppercase tracking-widest text-foreground-dim block mb-2">סיכום</span>
+        <p className="text-[16px] font-semibold text-foreground" style={{ lineHeight: "1.7" }}>
+          {post.ai_summary}
+        </p>
+      </section>
 
-      <hr className="border-[var(--glass-border)] mb-6" />
+      <Divider />
 
       {/* Key Points */}
       {post.ai_key_points.length > 0 && (
-        <section className="mb-6">
-          <span className="text-[11px] uppercase tracking-wider text-foreground-dim block mb-2">נקודות מפתח</span>
-          <ul className="space-y-1.5">
-            {post.ai_key_points.map((point, i) => (
-              <li key={i} className="flex items-start gap-2 text-[14px] text-foreground leading-relaxed">
-                <span className="text-foreground-dim mt-1 text-[8px]">{"\u25CF"}</span>
-                <span>{point}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <>
+          <section>
+            <span className="text-[11px] uppercase tracking-widest text-foreground-dim block mb-3">נקודות מפתח</span>
+            <ul className="space-y-2.5">
+              {post.ai_key_points.map((point, i) => (
+                <li key={i} className="flex items-start gap-3 text-[14px] text-foreground" style={{ lineHeight: "1.7" }}>
+                  <span className="mt-2.5 w-1.5 h-1.5 rounded-full bg-foreground-dim/60 shrink-0" />
+                  <span>{point}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+          <Divider />
+        </>
       )}
 
       {/* Action Items */}
       {post.ai_action_items.length > 0 && (
-        <section className="mb-6">
-          <span className="text-[11px] uppercase tracking-wider text-foreground-dim block mb-2">צעדים לביצוע</span>
-          <ol className="space-y-1.5">
-            {post.ai_action_items.map((item, i) => (
-              <li key={i} className="flex items-start gap-2 text-[14px] text-foreground leading-relaxed">
-                <span className="text-foreground-dim font-medium min-w-[1.2rem]">{i + 1}.</span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ol>
-        </section>
+        <>
+          <section>
+            <span className="text-[11px] uppercase tracking-widest text-foreground-dim block mb-3">צעדים לביצוע</span>
+            <ol className="space-y-2.5">
+              {post.ai_action_items.map((item, i) => (
+                <li key={i} className="flex items-start gap-3 text-[14px] text-foreground" style={{ lineHeight: "1.7" }}>
+                  <span className="text-foreground-dim font-medium min-w-[1.5rem] text-end">{i + 1}.</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ol>
+          </section>
+          <Divider />
+        </>
       )}
 
       {/* Tags */}
-      <section className="mb-6">
-        <span className="text-[11px] uppercase tracking-wider text-foreground-dim block mb-2">תגיות</span>
-        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+      <section>
+        <span className="text-[11px] uppercase tracking-widest text-foreground-dim block mb-3">תגיות</span>
+        <div className="flex flex-wrap items-center gap-2 mb-2">
           {post.tags.map((tag) => (
-            <span key={tag.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] bg-white/6 text-foreground-mid border border-[var(--glass-border)]">
+            <span
+              key={tag.id}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] text-foreground-mid"
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+            >
               {tag.name}
-              <button onClick={() => handleRemoveTag(tag.id)} className="hover:text-negative transition-colors text-foreground-dim">{"\u00D7"}</button>
+              <button
+                onClick={() => handleRemoveTag(tag.id)}
+                className="hover:text-negative transition-colors text-foreground-dim text-[14px]"
+              >
+                {"\u00D7"}
+              </button>
             </span>
           ))}
-          <button onClick={() => setShowTagSelector(!showTagSelector)} className="btn-ghost text-[12px] px-2.5 py-1">
+          <button
+            onClick={() => setShowTagSelector(!showTagSelector)}
+            className="btn-ghost text-[12px] !px-3 !py-1.5"
+          >
             + תגית
           </button>
         </div>
@@ -155,43 +204,51 @@ export function PostDetail({ initialPost }: PostDetailProps) {
         )}
       </section>
 
+      <Divider />
+
       {/* Personal Note */}
-      <section className="mb-6">
-        <span className="text-[11px] uppercase tracking-wider text-foreground-dim block mb-2">הערה אישית</span>
+      <section>
+        <span className="text-[11px] uppercase tracking-widest text-foreground-dim block mb-3">הערה אישית</span>
         <textarea
           value={note}
           onChange={(e) => { setNote(e.target.value); setNoteChanged(true); }}
           placeholder="הוסף הערה..."
-          rows={3}
-          className="glass-input w-full px-4 py-3 text-[14px] resize-none"
+          rows={4}
+          className="glass-input w-full px-4 py-3 text-[14px] resize-y"
+          style={{ lineHeight: "1.7", minHeight: "100px" }}
         />
         <div className="flex items-center gap-2 mt-2">
           {noteChanged && (
-            <button onClick={handleSaveNote} className="btn-primary text-[13px] px-4 py-1.5">שמור</button>
+            <button onClick={handleSaveNote} className="btn-primary text-[13px] !px-5 !py-2">שמור</button>
           )}
           {noteSaved && <span className="text-accent-green text-[12px]">נשמר</span>}
         </div>
       </section>
 
-      {/* Original Text */}
-      <section className="mb-6">
+      <Divider />
+
+      {/* Original Text (collapsible) */}
+      <section>
         <button
           onClick={() => setShowOriginal(!showOriginal)}
-          className="text-[13px] text-foreground-dim hover:text-foreground transition-colors"
+          className="flex items-center gap-2 text-[13px] text-foreground-dim hover:text-foreground transition-colors"
         >
-          {showOriginal ? "הסתר טקסט מקורי \u25BE" : "הצג טקסט מקורי \u25B8"}
+          <span>{showOriginal ? "\u25BE" : "\u25B8"}</span>
+          הצג טקסט מקורי
         </button>
         {showOriginal && (
-          <div className="mt-3 glass-card p-4 text-[13px] text-foreground-mid leading-relaxed">
+          <div className="mt-3 glass-card p-4 text-[13px] text-foreground-mid" style={{ lineHeight: "1.7" }}>
             {post.original_text || "הטקסט המקורי לא זמין"}
           </div>
         )}
       </section>
 
+      <Divider />
+
       {/* Details */}
-      <section className="mb-6 glass-card p-4">
-        <span className="text-[11px] uppercase tracking-wider text-foreground-dim block mb-3">פרטים</span>
-        <div className="space-y-2 text-[13px]">
+      <section className="glass-card p-4">
+        <span className="text-[11px] uppercase tracking-widest text-foreground-dim block mb-3">פרטים</span>
+        <div className="space-y-2.5 text-[13px]">
           <div className="flex justify-between">
             <span className="text-foreground-dim">פלטפורמה</span>
             <span className="text-foreground">{post.platform}</span>
@@ -206,19 +263,21 @@ export function PostDetail({ initialPost }: PostDetailProps) {
             <span className="text-foreground-dim">נשמר</span>
             <span className="text-foreground">{formatHebrewDate(post.created_at)}</span>
           </div>
+          <div className="flex justify-between">
+            <span className="text-foreground-dim">מקור</span>
+            <a
+              href={post.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent-blue hover:underline truncate max-w-[60%]"
+            >
+              {post.url}
+            </a>
+          </div>
         </div>
       </section>
 
-      {/* Delete */}
-      <div className="pt-4 border-t border-[var(--glass-border)]">
-        <button
-          onClick={() => setShowDeleteConfirm(true)}
-          className="text-[13px] text-negative hover:underline"
-        >
-          מחק פוסט
-        </button>
-      </div>
-
+      {/* Delete Confirm */}
       {showDeleteConfirm && (
         <ConfirmDialog
           title="מחיקת פוסט"
